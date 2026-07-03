@@ -119,7 +119,7 @@ inline void init_variable(py::module_& m) {
                py::arg("data"), py::arg("requires_grad") = false,
                py::arg("device") = lmp::DEFAULT_DEVICE,
                py::arg("dtype") = lmp::DEFAULT_DTYPE)
-          .def_property("data", &Variable::data, nullptr)
+          .def_property("data", &Variable::data, &Variable::set_data)
           .def_property("grad", &Variable::grad, nullptr)
           .def_property("grad_fn", &Variable::grad_fn, nullptr)
           .def_property("requires_grad", &Variable::requires_grad, nullptr)

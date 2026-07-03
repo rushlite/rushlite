@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "lamp3/tensor/core.hpp"
 #include "lamp3/tensor/data_type.hpp"
 #include "lamp3/tensor/tensor.hpp"
@@ -46,6 +47,7 @@ class Variable {
   bool requires_grad() const noexcept;
 
   void zero_grad();
+  void set_data(const tensor::Tensor& data);
   void incr_grad(const tensor::Tensor& other_grad);
   void set_grad_fn(std::shared_ptr<Function> grad_fn);
 
