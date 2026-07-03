@@ -18,8 +18,6 @@ using lmp::tensor::Tensor;      // NOLINT(google-global-names-in-headers)
 
 namespace detail {
 
-// Flattens arbitrarily nested Python sequences into (data, shape),
-// mirroring lmp::autograd::TensorHelper::unroll over dynamic types.
 inline void flatten_sequence(const py::handle& node, std::vector<Scalar>& data,
                              std::vector<size_t>& shape, size_t depth) {
   if (py::isinstance<py::sequence>(node) && !py::isinstance<py::str>(node) &&
@@ -27,7 +25,7 @@ inline void flatten_sequence(const py::handle& node, std::vector<Scalar>& data,
     auto seq = py::reinterpret_borrow<py::sequence>(node);
     const size_t n = seq.size();
     if (depth == shape.size()) {
-      if (!data.empty()) {  // leftmost branch already bottomed out shallower
+      if (!data.empty()) {
         throw py::value_error("Rushlite: array must be uniform");
       }
       shape.push_back(n);
@@ -73,7 +71,6 @@ inline void init_variable_overloads(py::class_<Variable>& cls) {
   cls.def(-py::self)
       .def("__abs__", &lmp::autograd::ops::abs, py::is_operator())
       .def("__matmul__", &lmp::autograd::ops::matmul, py::is_operator())
-      // no operator** exists in C++, so pow can't use the py::self sugar
       .def("__pow__", &lmp::autograd::ops::pow, py::is_operator())
       .def("__pow__",
            static_cast<Variable (*)(const Variable&, Scalar)>(
