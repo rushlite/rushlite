@@ -4,7 +4,7 @@
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/rushlite/rushlite) <!-- Placeholder -->
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/rushlite/rushlite/blob/main/LICENSE) <!-- Placeholder -->
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/rushlite/rushlite) <!-- Placeholder -->
+[![Version](https://img.shields.io/badge/version-0.0.0-blue)](https://github.com/rushlite/rushlite) <!-- Placeholder -->
 
 # Rushlite
 
@@ -29,7 +29,7 @@ Highlights:
   - [Autograd](#autograd)
   - [A simple MLP](#a-simple-mlp)
 - [Building from source](#building-from-source)
-  - [Using Lamp3 (the C++ core)](#using-lamp3)
+  - [Using Lamp3](#using-lamp3)
 - [License](#license)
 - [Contributing](#contributing)
 
