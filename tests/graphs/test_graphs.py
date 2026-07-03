@@ -19,7 +19,7 @@ SEEDS = list(range(16))
 
 def _cuda_available():
     try:
-        rushlite.Tensor(
+        rushlite.Variable(
             [[0.0]], device=rushlite.device.cuda, dtype=rushlite.dtype.float64
         )
         return True

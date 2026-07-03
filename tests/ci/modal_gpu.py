@@ -63,7 +63,7 @@ def run_gpu_ci() -> None:
     _run(
         'uv run python -c "'
         "import rushlite; "
-        "rushlite.Tensor([[0.0]], requires_grad=False, "
+        "rushlite.Variable([[0.0]], requires_grad=False, "
         "device=rushlite.device.cuda, dtype=rushlite.dtype.float64); "
         "print('rushlite CUDA device OK')\""
     )

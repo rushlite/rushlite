@@ -6,9 +6,10 @@
 namespace py = pybind11;
 
 inline void init_view(py::module_& m) {
-    m.def("reshape", &lmp::autograd::ops::reshape);
-    m.def("squeeze", &lmp::autograd::ops::squeeze);
-    m.def("expand_dims", &lmp::autograd::ops::expand_dims);
-    m.def("to", &lmp::autograd::ops::to);
+  m.def("reshape", &lmp::autograd::ops::reshape, py::arg("a"),
+        py::arg("shape"));
+  m.def("squeeze", &lmp::autograd::ops::squeeze, py::arg("a"), py::arg("axis"));
+  m.def("expand_dims", &lmp::autograd::ops::expand_dims, py::arg("a"),
+        py::arg("axis"));
+  m.def("to", &lmp::autograd::ops::to, py::arg("a"), py::arg("device"));
 }
-

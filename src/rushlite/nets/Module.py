@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generator
 
-from rushlite.Tensor import Tensor
+from rushlite._C import Variable
 
 
 class Module(ABC):
@@ -13,16 +13,16 @@ class Module(ABC):
         pass
 
     def __setattr__(self, name: str, value: Any, /) -> None:
-        if isinstance(value, Module) or isinstance(value, Tensor):
+        if isinstance(value, Module) or isinstance(value, Variable):
             self._params_dict[name] = value
         super().__setattr__(name, value)
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         return self.forward(*args, **kwds)
 
-    def parameters(self) -> Generator[Tensor, None, None]:
+    def parameters(self) -> Generator[Variable, None, None]:
         for val in self._params_dict.values():
-            if isinstance(val, Tensor):
+            if isinstance(val, Variable):
                 yield val
             elif isinstance(val, Module):
                 yield from val.parameters()
@@ -31,9 +31,9 @@ class Module(ABC):
 
     def named_parameters(
         self, _path: str = []
-    ) -> Generator[tuple[str, Tensor], None, None]:
+    ) -> Generator[tuple[str, Variable], None, None]:
         for key, val in self._params_dict.items():
-            if isinstance(val, Tensor):
+            if isinstance(val, Variable):
                 yield (".".join(map(str, (_path + [key]))), val)
             elif isinstance(val, Module):
                 yield from val.named_parameters(_path=_path + [key])

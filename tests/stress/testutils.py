@@ -35,7 +35,7 @@ def from_row_major(flat, like):
 
 
 def to_rushlite_var(mat, device, requires_grad=True):
-    return rushlite.Tensor(
+    return rushlite.Variable(
         mat, requires_grad=requires_grad, device=device, dtype=rushlite.dtype.float64
     )
 

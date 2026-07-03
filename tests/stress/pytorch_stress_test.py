@@ -56,7 +56,7 @@ def get_case():
 
 def _rushlite_cuda_available():
     try:
-        rushlite.Tensor(
+        rushlite.Variable(
             [[0.0]],
             requires_grad=False,
             device=rushlite.device.cuda,
