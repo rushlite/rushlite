@@ -86,6 +86,12 @@ class Tensor {
   void copy(const Tensor& other);
   void fill(Scalar item);
 
+  /**
+  * @note This function guarantees the data is realized. it's a no-op
+  * is already calculated
+  */
+  void realize();
+
   friend std::ostream& operator<<(std::ostream& os, const Tensor& obj);
   friend class TensorOpFact;
   friend class detail::UnsafeTensorAccessor;
