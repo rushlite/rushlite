@@ -39,7 +39,7 @@ if (LMP_ENABLE_CUDA)
   find_package(CUDAToolkit REQUIRED)              
 endif()
 
-find_package(OpenMP REQUIRED) # TODO: make this optional
+find_package(OpenMP)
 
 # Enabled for shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -78,7 +78,7 @@ add_subdirectory(csrc/src/nets)
 add_library(lamp3 INTERFACE)
 target_link_libraries(lamp3 INTERFACE autograd_core tensor_core inductor_core nets_core)
 
-add_subdirectory(docs)
+add_subdirectory(docs) # TODO: this includes some examples that we don't technically need to build
 add_subdirectory(csrc/bindings)
 if(LMP_ENABLE_TEST)
   add_subdirectory(csrc/tests)

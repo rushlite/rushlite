@@ -1,25 +1,35 @@
 [project]
 name = "rushlite"
-version = "0.1.0"
-description = ""
+version = "0.0.1"
+description = "A lightweight machine learning framework from scratch"
 authors = [{ name = "clay-arras", email = "astrollin.neil@gmail.com" }]
 requires-python = ">=3.11,<3.15"
 readme = "README.md"
 dependencies = [
-    "ipykernel>=7.1.0,<8",
-    "matplotlib>=3.10.8,<4",
-    "numpy>=2.4.0,<3",
-    "pybind11>=3.0.1,<4",
-    "pytest>=9.0.2,<10",
-    "scikit-build-core>=0.11.6",
-    "setuptools>=80.9.0",
-    "wheel>=0.45.1",
+    #    "pybind11>=3.0.1,<4",
+    #    "scikit-build-core>=0.11.6",
+    #    "setuptools>=80.9.0",
+    #    "wheel>=0.45.1",
+    "pybind11>=3.0.4",
+    "scikit-build-core>=0.12.2",
+    "setuptools>=81.0.0",
+    "wheel>=0.47.0",
 ]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/rushlite/rushlite"
+Issues = "https://github.com/rushlite/rushlite/issues"
+
 
 [dependency-groups]
 dev = [
     "black",
     "ruff",
+    "matplotlib",
+    "numpy",
+    "pytest"
 ]
 
 [project.optional-dependencies]
