@@ -18,12 +18,12 @@ FetchContent_MakeAvailable(googletest)
 # EXECUTABLES ---------------------------------
 enable_testing()
 
-add_executable(autograd_tests unit/autograd_tests.cpp)
+add_executable(autograd_tests autograd_tests.cpp)
 target_link_libraries(autograd_tests
   PRIVATE autograd_core GTest::gtest_main GTest::gmock
 )
 
-add_executable(tensor_tests unit/tensor_tests.cpp)
+add_executable(tensor_tests tensor_tests.cpp)
 target_link_libraries(tensor_tests
   PRIVATE tensor_core GTest::gtest_main GTest::gmock
 )

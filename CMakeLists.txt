@@ -81,7 +81,7 @@ target_link_libraries(lamp3 INTERFACE autograd_core tensor_core inductor_core ne
 add_subdirectory(docs)
 add_subdirectory(csrc/bindings)
 if(LMP_ENABLE_TEST)
-  add_subdirectory(tests)
+  add_subdirectory(csrc/tests)
 endif()
 if(LMP_ENABLE_BENCH)
   add_subdirectory(benchmarks)
@@ -124,7 +124,7 @@ file(GLOB_RECURSE ALL_CPP_SOURCE
   "${CMAKE_CURRENT_SOURCE_DIR}/csrc/src/tensor/*.[ch]pp"
   "${CMAKE_CURRENT_SOURCE_DIR}/csrc/src/autograd/*.[ch]pp"
   "${CMAKE_CURRENT_SOURCE_DIR}/csrc/src/bindings/*.[ch]pp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tests/*.[ch]pp" 
+  "${CMAKE_CURRENT_SOURCE_DIR}/csrc/tests/*.[ch]pp"
   "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.[ch]pp" 
 )
 
@@ -148,7 +148,7 @@ endif()
 # LINTING ---------------------------------
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 if(CLANG_TIDY_EXE)
-  set(HEADER_FILTER_REGEX "${CMAKE_CURRENT_SOURCE_DIR}/(csrc|tests|benchmarks)/.*")
+  set(HEADER_FILTER_REGEX "${CMAKE_CURRENT_SOURCE_DIR}/(csrc|benchmarks)/.*")
 
   if (LMP_ENABLE_CUDA)
     add_custom_target(lint

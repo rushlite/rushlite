@@ -47,7 +47,6 @@ class Variable {
   bool requires_grad() const noexcept;
 
   void zero_grad();
-  void set_data(const tensor::Tensor& data);
   void incr_grad(const tensor::Tensor& other_grad);
   void set_grad_fn(std::shared_ptr<Function> grad_fn);
 

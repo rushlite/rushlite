@@ -27,13 +27,6 @@ void Variable::zero_grad() {
   impl_->grad = zeros_like(impl_->grad);
   impl_->_grad_fn = nullptr;
 }  // TODO(root): this can be better, implement fill in tensor
-// rebinds the underlying data tensor; the gradient (and graph) are untouched,
-// similar to assigning to `.data` in Pytorch
-void Variable::set_data(const tensor::Tensor& data) {
-  LMP_CHECK(!requires_grad() || data.shape() == impl_->grad.shape())
-      << "set_data shape must match grad shape when requires_grad = true";
-  impl_->data = data;
-}
 void Variable::incr_grad(const tensor::Tensor& other_grad) {
   LMP_CHECK(requires_grad()) << "Cannot access grad() if requires_grad = false";
   LMP_INTERNAL_ASSERT(other_grad.shape() == impl_->grad.shape())

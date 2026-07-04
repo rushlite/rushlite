@@ -16,30 +16,6 @@ using lmp::tensor::Tensor;      // NOLINT(google-global-names-in-headers)
       .def(py::self op Scalar())    \
       .def(Scalar() op py::self);
 
-// in-place operators write through to the underlying storage, so every
-// Tensor/Variable sharing it (e.g. a Variable's .data) observes the update
-#define LMP_TEN_INPLACE_OPERATOR(name, op)                                  \
-  cls.def(                                                                  \
-         name,                                                              \
-         [](Tensor& self, const Tensor& other) {                            \
-           Tensor result = self op other;                                   \
-           if (result.shape() != self.shape()) {                            \
-             throw py::value_error(                                         \
-                 "Rushlite: in-place operator cannot broadcast the output " \
-                 "beyond the original shape");                              \
-           }                                                                \
-           self.copy(result);                                               \
-           return self;                                                     \
-         },                                                                 \
-         py::is_operator())                                                 \
-      .def(                                                                 \
-          name,                                                             \
-          [](Tensor& self, Scalar other) {                                  \
-            self.copy(self op other);                                       \
-            return self;                                                    \
-          },                                                                \
-          py::is_operator());
-
 inline void init_tensor_overloads(py::class_<Tensor>& cls) {
   LMP_TEN_BINARY_OPERATOR(+)
   LMP_TEN_BINARY_OPERATOR(-)
@@ -52,16 +28,10 @@ inline void init_tensor_overloads(py::class_<Tensor>& cls) {
   LMP_TEN_BINARY_OPERATOR(>)
   LMP_TEN_BINARY_OPERATOR(>=)
 
-  LMP_TEN_INPLACE_OPERATOR("__iadd__", +)
-  LMP_TEN_INPLACE_OPERATOR("__isub__", -)
-  LMP_TEN_INPLACE_OPERATOR("__imul__", *)
-  LMP_TEN_INPLACE_OPERATOR("__itruediv__", /)
-
   cls.def(-py::self);
 }
 
 #undef LMP_TEN_BINARY_OPERATOR
-#undef LMP_TEN_INPLACE_OPERATOR
 
 inline void init_tensor(py::module_& m) {
   auto cls =
