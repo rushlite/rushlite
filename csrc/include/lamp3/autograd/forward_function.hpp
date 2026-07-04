@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include "function.hpp"
+#include "grad_mode.hpp"
 #include "variable.hpp"
 
 namespace lmp::autograd {
@@ -24,7 +25,7 @@ struct ForwardFunction : public Function {
 
   template <typename... Args>
   variable_list apply(const variable_list& inputs, Args&&... args) {
-    bool requires_grad_ = requires_grad(inputs);
+    bool requires_grad_ = is_grad_enabled() && requires_grad(inputs);
     Variable result =
         Variable(static_cast<Derived*>(this)->execute(inputs), requires_grad_);
     if (requires_grad_) {

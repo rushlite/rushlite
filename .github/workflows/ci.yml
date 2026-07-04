@@ -71,6 +71,6 @@ jobs:
           limit-access-to-actor: true
 
       - name: Run tests
-        run: uv run pytest tests/stress/pytorch_stress_test.py
+        run: uv run pytest tests/
 
       # TODO: can probably upload some artifact here to save time, idc rn
