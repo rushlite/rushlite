@@ -421,6 +421,63 @@ TEST_P(VariableOpTest, ZeroGradTest) {
       << "Variable 'b' gradients should be zero after zero_grad";
 }
 
+TEST_P(VariableOpTest, GradModeDisablesRecordingTest) {
+  ASSERT_TRUE(lmp::autograd::is_grad_enabled());
+  {
+    lmp::autograd::GradModeGuard guard(false);
+    EXPECT_FALSE(lmp::autograd::is_grad_enabled());
+
+    Variable res = a_ * b_;
+    EXPECT_FALSE(res.requires_grad())
+        << "Ops inside GradModeGuard(false) must not require grad";
+    EXPECT_EQ(res.grad_fn().lock(), nullptr)
+        << "Ops inside GradModeGuard(false) must not record a grad_fn";
+    EXPECT_THAT(getTenData(res.data()),
+                ::testing::Pointwise(::testing::FloatNear(kEps),
+                                     {-1.0, 8.0, -6.0, 0.0, 15.0, 1.0}))
+        << "Forward data must still be computed under GradModeGuard(false)";
+
+    // explicit leaf construction still honors the requires_grad flag
+    Variable leaf = Variable(a_data_, true);
+    EXPECT_TRUE(leaf.requires_grad())
+        << "Explicit leaf creation must be unaffected by grad mode";
+  }
+  EXPECT_TRUE(lmp::autograd::is_grad_enabled())
+      << "GradModeGuard must restore the previous mode";
+
+  Variable res = a_ * b_;
+  EXPECT_TRUE(res.requires_grad())
+      << "Recording must resume after the guard is destroyed";
+  EXPECT_NE(res.grad_fn().lock(), nullptr);
+}
+
+TEST_P(VariableOpTest, GradModeGuardNestingTest) {
+  lmp::autograd::GradModeGuard outer(false);
+  EXPECT_FALSE(lmp::autograd::is_grad_enabled());
+  {
+    lmp::autograd::GradModeGuard inner(true);
+    EXPECT_TRUE(lmp::autograd::is_grad_enabled());
+  }
+  EXPECT_FALSE(lmp::autograd::is_grad_enabled())
+      << "Inner guard must restore the outer guard's mode, not the default";
+}
+
+TEST_P(VariableOpTest, GradModeBackwardUnaffectedTest) {
+  Variable res = a_ * b_;  // graph built with grad enabled
+  {
+    lmp::autograd::GradModeGuard guard(false);
+    res.backward();
+  }
+  EXPECT_THAT(getTenData(a_.grad()),
+              ::testing::Pointwise(::testing::FloatNear(kEps),
+                                   {-1.0, 4.0, -2.0, 0.0, 3.0, 0.5}))
+      << "backward() of a pre-built graph must work inside GradModeGuard";
+  EXPECT_THAT(getTenData(b_.grad()),
+              ::testing::Pointwise(::testing::FloatNear(kEps),
+                                   {1.0, 2.0, 3.0, 4.0, 5.0, 2.0}))
+      << "backward() of a pre-built graph must work inside GradModeGuard";
+}
+
 namespace {
 
 std::vector<ParamTypes> GenerateParams() {

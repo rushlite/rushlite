@@ -2,6 +2,7 @@ project(autograd_lib LANGUAGES CXX)
 
 set(AUTOGRAD_SOURCES
   utils/constructor.cpp
+  grad_mode.cpp
   variable.cpp
   utils/grad_utils.cpp
   functions/matrix_ops.cpp
