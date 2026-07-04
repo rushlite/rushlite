@@ -66,10 +66,12 @@ class Module(ABC):
         """Mapping view over the module tree's parameters, keyed by the
         dotted paths of ``named_parameters()``. Supports functional updates:
 
-            with rushlite.no_grad():
-                model.params["layer1.w"] = p - lr * rushlite.Variable(p.grad)
+            model.params["layer1.w"] = rushlite.Variable(
+                p.data - lr * p.grad, requires_grad=True
+            )
 
-        Assignment promotes the value to a grad-requiring leaf (see
+        Assignment stores the Variable as-is: its ``requires_grad`` flag is
+        preserved, so a value built under ``no_grad()`` comes out frozen (see
         ``_ParamsView``). Note that ``incr_grad`` rebinds the grad tensor, so
         a ``p.grad`` handle is a snapshot: re-read it after each ``backward()``
         rather than caching it across steps.
@@ -114,11 +116,12 @@ class _ParamsView:
 
     Keys are the dotted paths yielded by ``named_parameters()`` (e.g.
     "layer1.w"). ``__setitem__`` walks to the owning module and assigns
-    there, promoting the value to a grad-requiring leaf when needed: an
-    update expression evaluated under ``no_grad()`` comes out with
-    ``requires_grad=False``, so it is rewrapped as
+    there, preserving the value's ``requires_grad`` flag: an update
+    expression evaluated under ``no_grad()`` comes out with
+    ``requires_grad=False`` and is stored that way (the param is frozen).
+    To keep a parameter trainable, rewrap explicitly:
     ``Variable(v.data, requires_grad=True)`` (cheap -- the tensor is a
-    shared handle). Plain ``self.w = ...`` assignment does NOT promote.
+    shared handle).
     """
 
     def __init__(self, module: Module) -> None:
@@ -148,8 +151,6 @@ class _ParamsView:
                 f"got {type(value).__name__}"
             )
         module, leaf = self._owner(key)
-        if not value.requires_grad:
-            value = Variable(value.data, requires_grad=True)
         setattr(module, leaf, value)
 
     def __iter__(self) -> Iterator[str]:

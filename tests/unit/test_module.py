@@ -2,8 +2,10 @@
 
 Parameters live ONLY in _params_dict (single source of truth); attribute
 access resolves them via __getattr__, and the ``params`` view supports
-functional updates by dotted path, promoting values assigned under
-no_grad() back to grad-requiring leaves.
+functional updates by dotted path. Assignment preserves the value's
+requires_grad flag, so updates must rewrap explicitly with
+requires_grad=True; assigning an expression built under no_grad() freezes
+the parameter.
 """
 
 import pytest
@@ -141,11 +143,14 @@ class TestParamsView:
         x = rsl.Variable([1.0, 1.0])
         assert m(x).tolist() == [7.5, 7.5]
 
-    def test_setitem_promotes_to_requires_grad(self):
+    def test_setitem_preserves_requires_grad_flag(self):
         m = Scale()
         m.params["w"] = rsl.Variable([3.0, 3.0], requires_grad=False)
-        assert m.w.requires_grad
+        assert not m.w.requires_grad
         assert m.w.tolist() == [3.0, 3.0]
+
+        m.params["w"] = rsl.Variable([4.0, 4.0], requires_grad=True)
+        assert m.w.requires_grad
 
 
 class TestFunctionalUpdates:
@@ -153,7 +158,9 @@ class TestFunctionalUpdates:
         err = model(x) - y
         return (err * err).sum(0)
 
-    def test_update_spelling_a_no_grad(self):
+    def test_assignment_under_no_grad_freezes_param(self):
+        # no_grad means no gradients: a param assigned from an expression
+        # built under no_grad() stays requires_grad=False (frozen)
         model = Scale()
         x = rsl.Variable([1.0, 1.0])
         y = rsl.Variable([3.0, 5.0])
@@ -166,11 +173,11 @@ class TestFunctionalUpdates:
 
         new_p = model.params["w"]
         assert new_p is not p
-        assert new_p.requires_grad
+        assert not new_p.requires_grad
         # w=[1,2], dL/dw = 2*(w-y)*x = [-4,-6]; w' = w + 0.1*[4,6]
         assert new_p.tolist() == pytest.approx([1.4, 2.6])
 
-    def test_update_spelling_b_pure_tensor(self):
+    def test_update_pure_tensor_spelling(self):
         model = Scale()
         x = rsl.Variable([1.0, 1.0])
         y = rsl.Variable([3.0, 5.0])
@@ -195,9 +202,10 @@ class TestFunctionalUpdates:
             loss = self._loss(model, x, y)
             loss.backward()
             losses.append(loss.tolist()[0])
-            with rsl.no_grad():
-                for name, p in list(model.named_parameters()):
-                    model.params[name] = p - lr * rsl.Variable(p.grad)
+            for name, p in list(model.named_parameters()):
+                model.params[name] = rsl.Variable(
+                    p.data - lr * p.grad, requires_grad=True
+                )
         assert losses[-1] < losses[0]
 
     def test_zero_grad(self):
