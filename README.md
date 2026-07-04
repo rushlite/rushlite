@@ -4,86 +4,196 @@
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/rushlite/rushlite) <!-- Placeholder -->
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/rushlite/rushlite/blob/main/LICENSE) <!-- Placeholder -->
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/rushlite/rushlite) <!-- Placeholder -->
+[![Version](https://img.shields.io/badge/version-0.0.0-blue)](https://github.com/rushlite/rushlite) <!-- Placeholder -->
 
-# Lamp3
+# Rushlite
 
-**A C++ automatic differentiation engine and tensor library built to capture 80% of Pytorch's functionality with less than 2% of the code.**
+Rushlite is a lightweight machine learning library built from scratch in C++/CUDA. It provides:
+- efficient tensor operations on GPU hardware, with automatic differentiation
+- reusable modules for building deep neural networks
 
-Have you ever looked into PyTorch's codebase and been overwhelmed by complex macros, codegen scripts, and layers of abstraction? Lamp3 is the opposite: a clean, concise implementation of automatic differentiation and n-dim tensors.
+Highlights:
+- **Intuitive to use**: the API closely mirrors PyTorch
+- **Fast backpropagation**: on single-op CUDA benchmarks, the backward pass is up to 3.5x faster than PyTorch ([benchmarks](benchmarks/README.md))
+- **Kernel fusion**: the backend (Lamp3) is one of the only machine learning libraries that exposes kernel fusion directly to C++ users
+- **Written from scratch**: the C++/CUDA core has zero dependencies beyond the CUDA Toolkit, and the Python layer depends only on pybind11 (to bind the C++ code)
 
-## What is Lamp3?
+> [!WARNING]
+> Rushlite is still in early development and updates may include breaking changes.
 
-Lamp3 is a from-scratch implementation of the core concepts behind modern deep learning frameworks, written in about 4,000 lines of C++ and CUDA. It's built around a simple philosophy: **"What I cannot create, I do not understand"** (Richard Feynman).
+## Contents
 
-**What makes it different:**
-- **Small and readable**: ~1,500 lines for autograd, ~2,500 lines for tensors. Zero dependencies 
-- **Transparent**: No mysterious compilation steps or hidden optimizations
-- **Hackable**: Want to add a new operation? It's straightforward
-- **Fast**: Lamp3 is about 3x faster than Pytorch on CUDA operation benchmarks. See [benchmarks](https://github.com/rushlite/rushlite/blob/main/benchmarks/README.md).
+- [Installation](#installation)
+- [Examples](#examples)
+  - [Kernel fusion](#kernel-fusion)
+  - [Autograd](#autograd)
+  - [A simple MLP](#a-simple-mlp)
+- [Building from source](#building-from-source)
+  - [Using Lamp3](#using-lamp3)
+- [License](#license)
+- [Contributing](#contributing)
 
-**What it's good for:**
-- Learning how automatic differentiation actually works
-- Understanding the fundamentals behind PyTorch/TensorFlow
-- Building small and fast neural networks
+## Installation
 
-**What it's not:**
-- A production-ready framework to build complex neural architectures (maybe one day ;])
-- Optimized for massive models or distributed training
-
-## Quick Start
-
-### Building
+Create and activate a virtual environment, then install **Rushlite**:
 
 ```bash
-git clone https://github.com/rushlite/rushlite.git
-cd rushlite
-cmake -S . -B build -DLMP_ENABLE_CUDA=ON  # or OFF if you don't have CUDA
-cmake --build build
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+$ pip install rushlite
 ```
 
-### Your first neural network
+To install with CUDA acceleration, point pip at the wheels attached to a GitHub release:
+
+```bash
+$ pip install rushlite -f https://github.com/rushlite/rushlite/releases/expanded_assets/v0.1.0
+```
+
+Change the release tag to the latest version, or whichever one you want. Unfortunately, the only supported CUDA versions is CUDA 12 right now.
+
+## Examples
+
+### Kernel fusion
+
+To fuse a group of operations, use the `capture_on` context manager or the `capture` decorator:
+
+```py
+import rushlite as rsl
+
+a = rsl.rand([5, 5])
+b = rsl.rand([5, 1])
+
+with rsl.capture_on():
+    c = a * a + b  # recorded lazily and compiled into a fused kernel
+
+print(c)
+```
+
+Note that `capture_on` limits where operations are *captured*, not where they are *realized*: a lazily captured graph can be realized anywhere, including outside the `with` block, the first time its values are needed.
+
+Lazy graphs can be realized explicitly by calling `c.realize()`, or implicitly through methods that might need access to the realized data, such as printing.
+
+<!-- TODO: create a guide for realize(), when data() is called -->
+
+### Autograd
+
+In Rushlite, gradient-tracked tensors are called `Variable`:
+
+```py
+import rushlite as rsl
+
+a = rsl.rand([5, 5], requires_grad=True)
+b = rsl.rand([5, 1], requires_grad=True)
+
+c = a + b  # broadcasts
+c.backward()
+```
+
+`a.grad` and `b.grad` now hold the accumulated gradients. Unlike PyTorch, a `Variable` does *not* need to be a scalar to call `backward()` on it.
+
+### A simple MLP
+
+Putting it together: `rushlite.nets` provides reusable modules for building neural nets, and you can fuse the forward pass with `capture`.
+
+```py
+import rushlite as rsl
+from rushlite.nets import layers
+
+model = layers.Sequential([
+    layers.Linear(256, 64),
+    layers.ReLU(),
+    layers.Linear(64, 10),
+    layers.Softmax(dim=-1),
+])
+
+@rsl.capture()  
+def forward(x):
+    return model(x)
+
+x = rsl.rand([32, 256])
+y = rsl.rand([32, 10])
+
+for step in range(1000):
+    probs = forward(x)
+    loss = (-y * rsl.log(probs + 1e-3)).sum(1).sum(0)  # cross-entropy
+    loss.backward()
+
+    for name, p in model.named_parameters():
+        model.params[name] = rsl.Variable(p.data - 1e-3 * p.grad, requires_grad=True)
+
+    if step % 100 == 0:
+        print(step, loss.tolist()[0])
+```
+
+Variables are immutable from Python: updates build a new `Variable` and bind it
+back into the model through `model.params`, rather than mutating tensors in place.
+
+## Building from source
+
+You will need:
+
+- CMake 3.27+
+- A C++20 compiler (most common GCC 11+, Clang 14+)
+- Python 3.11–3.14
+- CUDA Toolkit 12.x (optional, for GPU support)
+
+We use [`uv`](https://docs.astral.sh/uv/) as the package manager below, but any one works:
+
+```sh
+$ git clone https://github.com/rushlite/rushlite.git
+$ cd rushlite
+$ uv lock
+$ uv sync
+$ uv pip install -e .
+```
+
+This builds the C++ core and the Python bindings from scratch. To enable CUDA:
+
+```sh
+$ uv pip install -e . -C cmake.define.LMP_ENABLE_CUDA=ON
+```
+
+### Using Lamp3 
+
+Lamp3 is Rushlite's C++ backend (the name comes from lamp++ → lamppp → lamp3), and it's a full standalone library -- the Python layer is a thin pybind11 wrapper around it. 
+
+To build it without the Python bindings:
+
+```sh
+$ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DLMP_ENABLE_CUDA=ON
+$ cmake --build build
+```
+
+The easiest way to consume it from your own CMake project is `add_subdirectory` (or `FetchContent`) and linking the umbrella target:
+
+```cmake
+add_subdirectory(rushlite)
+target_link_libraries(my_app PRIVATE lamp3)
+```
+
+A minimal program:
 
 ```cpp
 #include "lamp3/lamp3.hpp"
+#include <iostream>
 
 int main() {
-    // Create some tensors
-    lmp::Tensor data_a(std::vector<float>{2.0f, 4.0f}, {1, 2}, 
-                       lmp::DeviceType::CUDA, lmp::DataType::Float32);
-    lmp::Tensor data_b(std::vector<float>{3.0f, 1.0f}, {1, 2}, 
-                       lmp::DeviceType::CUDA, lmp::DataType::Float32);
+  lmp::Tensor data({1.0F, 2.0F, 3.0F, 4.0F}, {2, 2},
+                   lmp::DeviceType::CPU, lmp::DataType::Float32);
+  lmp::Variable a(data, /*requires_grad=*/true);
 
-    // Wrap them in Variables to track gradients
-    lmp::Variable a(data_a, true);
-    lmp::Variable b(data_b, true);
+  lmp::Variable loss = lmp::sum(a * a, 0);
+  loss.backward();
 
-    // Do some math
-    lmp::Variable c = a * b;
-    lmp::Variable loss = lmp::sum(lmp::sum(c, 1), 0);
-
-    // Compute gradients automatically (wow :o)
-    loss.backward(); 
-
-    std::cout << "Gradient of a: " << a.grad() << std::endl;
-    std::cout << "Gradient of b: " << b.grad() << std::endl;
+  std::cout << a.grad() << std::endl;  // 2a
 }
 ```
 
-Want to see a complete neural network? Check out `examples/mnist.cpp` for a full implementation that trains on MNIST.
+## License
 
-## How it works
+Rushlite is licensed under the [MIT License](LICENSE).
 
-Lamp3 builds computation graphs dynamically as you run your code. When you do `a * b`, it creates a multiplication node that remembers how to compute gradients. When you call `loss.backward()`, it walks backward through the graph computing derivatives using the chain rule.
+## Contributing
 
-The tensor library stores everything as `void*` with type information, so you can add new data types easily. CUDA operations have their own kernels in `src/tensor/cuda/`, while CPU operations live in `src/tensor/native/`.
-
-If you want to add a new operation, inherit from `autograd::Function` and implement `forward` and `backward` methods. 
-
-## Requirements
-
-- **Required**: CMake 3.24+, C++20 compiler, OpenMP
-- **Optional**: CUDA toolkit (for GPU acceleration -- although keep in mind that most of the optimization was done for CUDA, not CPU, so it's highly recommended)
-- **For tests**: Python 3.11+ (stress testing against Pytorch)
-
-
+Contributions are welcome.
+A contributing guide is coming soon! In the meantime, feel free to [open an issue](https://github.com/rushlite/rushlite/issues) for bugs, questions, or feature requests.

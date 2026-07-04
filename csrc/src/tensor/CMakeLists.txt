@@ -59,8 +59,12 @@ if (LMP_ENABLE_CUDA)
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
   )
   target_link_libraries(tensor_core
-    PUBLIC CUDA::cudart OpenMP::OpenMP_CXX
+    PUBLIC CUDA::cudart
   )
+endif()
+
+if (OpenMP_CXX_FOUND)
+  target_link_libraries(tensor_core PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
 target_compile_definitions(tensor_core PUBLIC)
