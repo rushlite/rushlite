@@ -117,6 +117,41 @@ Legend: 🔴 bug / broken promise · 🟠 missing feature that blocks a common w
   the README's `uv sync` can't run them and gets an ImportError with no guidance.
   Related to #88 (contributor docs).
 
+## Stage 7 — writing a real training script end-to-end
+
+Wrote a standard 3-class spiral classifier (2→32→32→3 MLP, minibatch SGD,
+cross-entropy, accuracy, checkpoint) three times: first as a torch user would write it,
+then adapting around each wall. Final verdict: **it works — 99% accuracy in 2.6 s —
+but every stage of the standard loop needs a workaround.**
+
+1. **Batching**: the idiomatic `perm = randperm(len(X)); xb = X[perm[s:s+32]]` dies at
+   `len()` and again at `X[idx]` (no fancy indexing, no slicing). Workaround: keep the
+   dataset as Python lists and construct a fresh `Variable` per minibatch. Fine at
+   spiral scale; a real dataset re-tokenizes Python floats every step.
+2. **Cross-entropy**: the standard gather `probs[arange(n), y]` is impossible (no
+   integer indexing), so targets must be one-hot on the host:
+   `-(onehot * log(softmax(logits) + 1e-9)).sum(1).sum(0) / n`. Note `sum` keeps dims,
+   so the "scalar" loss has shape `[1, 1]` and reading it is `loss.tolist()[0]`.
+3. **Init, again**: out of the box this model sat at chance (~0.33). Rescaling weights
+   by √(2/fan_in) and zeroing biases by hand is mandatory boilerplate today.
+4. **Dropout in anger**: added `Dropout(0.1)` exactly as a torch user would →
+   accuracy collapses 0.99 → **0.60** (it keeps 10% instead of dropping 10%). This is
+   the inverted-mask bug from Stage 4 showing up in a realistic workflow; combined with
+   no `eval()` mode, Dropout is currently unusable.
+5. **Hand-rolled Adam**: doable, with three frictions — `p.grad` is a `_Tensor` so each
+   use needs a `rsl.Variable(p.grad)` rewrap to reach the ops; the whole `step()` must
+   sit inside `no_grad()` or optimizer math builds autograd graphs; and mixed
+   `Variable`/`_Tensor` expressions force `.data` hops (e.g.
+   `p.data - lr * (mhat / (sqrt(vhat) + eps)).data`).
+6. **Accuracy**: no argmax, and `tolist()` is flat, so the metric is a Python loop over
+   `flat[i*k:(i+1)*k].index(max(...))`. Slow and ugly, but the only route.
+7. **Checkpointing**: no `state_dict`/save/load. Hand-rolled JSON works, but because
+   `tolist()` loses shape you must store `p.shape` alongside the flat data and
+   `reshape` on load. Round-trip verified (accuracy identical after reload).
+8. **Unbatched inference**: `Linear` rejects a 1-D input `(features,)` because matmul
+   is strictly 2-D — every single-sample call needs a manual `[[...]]` wrap and a
+   `squeeze(0)` after.
+
 ---
 
 ## Roll-up: gaps not yet tracked in any open issue
