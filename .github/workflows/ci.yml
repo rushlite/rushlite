@@ -47,8 +47,8 @@ jobs:
 
       - name: Run GTests
         run: |
-          build/tests/autograd_tests
-          build/tests/tensor_tests
+          build/csrc/tests/autograd_tests
+          build/csrc/tests/tensor_tests
 
       - name: Setup Python 3
         uses: actions/setup-python@v4
