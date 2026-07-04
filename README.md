@@ -65,9 +65,13 @@ b = rsl.rand([5, 1])
 
 with rsl.capture_on():
     c = a * a + b  # recorded lazily and compiled into a fused kernel
+
+print(c)
 ```
 
 Note that `capture_on` limits where operations are *captured*, not where they are *realized*: a lazily captured graph can be realized anywhere, including outside the `with` block, the first time its values are needed.
+
+Lazy graphs can be realized explicitly by calling `c.realize()`, or implicitly through methods that might need access to the realized data, such as printing.
 
 <!-- TODO: create a guide for realize(), when data() is called -->
 
@@ -96,27 +100,33 @@ import rushlite as rsl
 from rushlite.nets import layers
 
 model = layers.Sequential([
-    layers.Linear(784, 128),
+    layers.Linear(256, 64),
     layers.ReLU(),
-    layers.Linear(128, 10),
+    layers.Linear(64, 10),
     layers.Softmax(dim=-1),
 ])
-
-x = rsl.rand([32, 784])  
-y = rsl.rand([32, 10])  
 
 @rsl.capture()  
 def forward(x):
     return model(x)
 
-probs = forward(x)
-loss = rsl.sum(rsl.sum(-y * rsl.log(probs + 1e-3), 0), 1)  # cross-entropy
-loss.backward()
+x = rsl.rand([32, 256])
+y = rsl.rand([32, 10])
 
-for name, param in model.named_parameters():
-    print(name, param.grad)
+for step in range(1000):
+    probs = forward(x)
+    loss = (-y * rsl.log(probs + 1e-3)).sum(1).sum(0)  # cross-entropy
+    loss.backward()
+
+    for name, p in model.named_parameters():
+        model.params[name] = rsl.Variable(p.data - 1e-3 * p.grad, requires_grad=True)
+
+    if step % 100 == 0:
+        print(step, loss.tolist()[0])
 ```
 
+Variables are immutable from Python: updates build a new `Variable` and bind it
+back into the model through `model.params`, rather than mutating tensors in place.
 
 ## Building from source
 
@@ -132,6 +142,7 @@ We use [`uv`](https://docs.astral.sh/uv/) as the package manager below, but any 
 ```sh
 $ git clone https://github.com/rushlite/rushlite.git
 $ cd rushlite
+$ uv lock
 $ uv sync
 $ uv pip install -e .
 ```
