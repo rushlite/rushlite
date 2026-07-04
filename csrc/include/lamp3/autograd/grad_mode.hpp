@@ -2,10 +2,10 @@
 
 namespace lmp::autograd {
 
-class GradModeGuard {
+class GradGuard {
 public:
-    explicit GradModeGuard(bool grad_enabled);
-    ~GradModeGuard();
+    explicit GradGuard(bool grad_enabled);
+    ~GradGuard();
 
 private:
 bool prev;

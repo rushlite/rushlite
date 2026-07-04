@@ -424,18 +424,18 @@ TEST_P(VariableOpTest, ZeroGradTest) {
 TEST_P(VariableOpTest, GradModeDisablesRecordingTest) {
   ASSERT_TRUE(lmp::autograd::is_grad_enabled());
   {
-    lmp::autograd::GradModeGuard guard(false);
+    lmp::autograd::GradGuard guard(false);
     EXPECT_FALSE(lmp::autograd::is_grad_enabled());
 
     Variable res = a_ * b_;
     EXPECT_FALSE(res.requires_grad())
-        << "Ops inside GradModeGuard(false) must not require grad";
+        << "Ops inside GradGuard(false) must not require grad";
     EXPECT_EQ(res.grad_fn().lock(), nullptr)
-        << "Ops inside GradModeGuard(false) must not record a grad_fn";
+        << "Ops inside GradGuard(false) must not record a grad_fn";
     EXPECT_THAT(getTenData(res.data()),
                 ::testing::Pointwise(::testing::FloatNear(kEps),
                                      {-1.0, 8.0, -6.0, 0.0, 15.0, 1.0}))
-        << "Forward data must still be computed under GradModeGuard(false)";
+        << "Forward data must still be computed under GradGuard(false)";
 
     // explicit leaf construction still honors the requires_grad flag
     Variable leaf = Variable(a_data_, true);
@@ -443,7 +443,7 @@ TEST_P(VariableOpTest, GradModeDisablesRecordingTest) {
         << "Explicit leaf creation must be unaffected by grad mode";
   }
   EXPECT_TRUE(lmp::autograd::is_grad_enabled())
-      << "GradModeGuard must restore the previous mode";
+      << "GradGuard must restore the previous mode";
 
   Variable res = a_ * b_;
   EXPECT_TRUE(res.requires_grad())
@@ -451,11 +451,11 @@ TEST_P(VariableOpTest, GradModeDisablesRecordingTest) {
   EXPECT_NE(res.grad_fn().lock(), nullptr);
 }
 
-TEST_P(VariableOpTest, GradModeGuardNestingTest) {
-  lmp::autograd::GradModeGuard outer(false);
+TEST_P(VariableOpTest, GradGuardNestingTest) {
+  lmp::autograd::GradGuard outer(false);
   EXPECT_FALSE(lmp::autograd::is_grad_enabled());
   {
-    lmp::autograd::GradModeGuard inner(true);
+    lmp::autograd::GradGuard inner(true);
     EXPECT_TRUE(lmp::autograd::is_grad_enabled());
   }
   EXPECT_FALSE(lmp::autograd::is_grad_enabled())
@@ -465,17 +465,17 @@ TEST_P(VariableOpTest, GradModeGuardNestingTest) {
 TEST_P(VariableOpTest, GradModeBackwardUnaffectedTest) {
   Variable res = a_ * b_;  // graph built with grad enabled
   {
-    lmp::autograd::GradModeGuard guard(false);
+    lmp::autograd::GradGuard guard(false);
     res.backward();
   }
   EXPECT_THAT(getTenData(a_.grad()),
               ::testing::Pointwise(::testing::FloatNear(kEps),
                                    {-1.0, 4.0, -2.0, 0.0, 3.0, 0.5}))
-      << "backward() of a pre-built graph must work inside GradModeGuard";
+      << "backward() of a pre-built graph must work inside GradGuard";
   EXPECT_THAT(getTenData(b_.grad()),
               ::testing::Pointwise(::testing::FloatNear(kEps),
                                    {1.0, 2.0, 3.0, 4.0, 5.0, 2.0}))
-      << "backward() of a pre-built graph must work inside GradModeGuard";
+      << "backward() of a pre-built graph must work inside GradGuard";
 }
 
 namespace {

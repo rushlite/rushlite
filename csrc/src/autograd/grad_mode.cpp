@@ -4,12 +4,12 @@ namespace lmp::autograd {
 
 bool thread_local grad_enabled = true;
 
-GradModeGuard::GradModeGuard(bool grad_enabled) {
+GradGuard::GradGuard(bool grad_enabled) {
   prev = is_grad_enabled();
   set_grad_enabled(grad_enabled);
 }
 
-GradModeGuard::~GradModeGuard() { set_grad_enabled(prev); }
+GradGuard::~GradGuard() { set_grad_enabled(prev); }
 
 bool is_grad_enabled() { return grad_enabled; }
 
