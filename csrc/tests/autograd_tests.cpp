@@ -4,13 +4,18 @@
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
+#include <stdexcept>
 #include <vector>
 
 #include "lamp3/autograd/core.hpp"
 #include "lamp3/autograd/functions/view_ops.hpp"
+#include "lamp3/autograd/grad_mode.hpp"
 #include "lamp3/tensor/core.hpp"
 #include "lamp3/tensor/device_type.hpp"
 
+using lmp::autograd::GradModeGuard;
+using lmp::autograd::is_grad_enabled;
+using lmp::autograd::set_grad_enabled;
 using lmp::autograd::Variable;
 using lmp::tensor::DataType;
 using lmp::tensor::DeviceType;
@@ -419,6 +424,60 @@ TEST_P(VariableOpTest, ZeroGradTest) {
               ::testing::Pointwise(::testing::FloatNear(kEps),
                                    {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}))
       << "Variable 'b' gradients should be zero after zero_grad";
+}
+
+TEST_P(VariableOpTest, NoGradDisablesRecordingTest) {
+  EXPECT_TRUE(is_grad_enabled());
+  {
+    GradModeGuard guard(false);
+    EXPECT_FALSE(is_grad_enabled());
+
+    Variable res = a_ + b_;
+    EXPECT_FALSE(res.requires_grad())
+        << "Result should not require grad when grad mode is disabled";
+    EXPECT_TRUE(res.grad_fn().expired())
+        << "No backward node should be recorded when grad mode is disabled";
+  }
+  EXPECT_TRUE(is_grad_enabled())
+      << "Guard should restore previous grad mode on scope exit";
+}
+
+TEST_P(VariableOpTest, NoGradLeafConstructionUnaffectedTest) {
+  GradModeGuard guard(false);
+  Variable leaf = Variable(a_data_, true);
+  EXPECT_TRUE(leaf.requires_grad())
+      << "Explicit requires_grad on leaf construction must be honored inside "
+         "no_grad";
+}
+
+TEST_P(VariableOpTest, NoGradGuardRestoresOnExceptionTest) {
+  set_grad_enabled(true);
+  try {
+    GradModeGuard guard(false);
+    EXPECT_FALSE(is_grad_enabled());
+    throw std::runtime_error("boom");
+  } catch (const std::runtime_error&) {
+    // expected
+  }
+  EXPECT_TRUE(is_grad_enabled())
+      << "Guard destructor must restore grad mode even when unwound by an "
+         "exception";
+}
+
+TEST_P(VariableOpTest, BackwardInsideNoGradTest) {
+  Variable res = a_ + b_;
+  {
+    GradModeGuard guard(false);
+    res.backward();
+  }
+  EXPECT_THAT(getTenData(a_.grad()),
+              ::testing::Pointwise(::testing::FloatNear(kEps),
+                                   {1.0, 1.0, 1.0, 1.0, 1.0, 1.0}))
+      << "backward() on a pre-built graph must still work inside no_grad";
+  EXPECT_THAT(getTenData(b_.grad()),
+              ::testing::Pointwise(::testing::FloatNear(kEps),
+                                   {1.0, 1.0, 1.0, 1.0, 1.0, 1.0}))
+      << "backward() on a pre-built graph must still work inside no_grad";
 }
 
 namespace {

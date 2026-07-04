@@ -3,6 +3,7 @@
 #include "lamp3/autograd/utils/constructor.hpp"
 #include "lamp3/autograd/forward_function.hpp"
 #include "lamp3/autograd/function.hpp"
+#include "lamp3/autograd/grad_mode.hpp"
 #include "lamp3/autograd/functions/expand_ops.hpp"
 #include "lamp3/autograd/functions/matrix_ops.hpp"
 #include "lamp3/autograd/functions/overloads.hpp"
