@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "lamp3/tensor/core.hpp"
 #include "lamp3/tensor/data_type.hpp"
 #include "lamp3/tensor/tensor.hpp"

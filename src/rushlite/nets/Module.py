@@ -30,8 +30,9 @@ class Module(ABC):
                 raise Exception()
 
     def named_parameters(
-        self, _path: str = []
+        self, _path: list[str] | None = None
     ) -> Generator[tuple[str, Variable], None, None]:
+        _path = _path or []
         for key, val in self._params_dict.items():
             if isinstance(val, Variable):
                 yield (".".join(map(str, (_path + [key]))), val)
