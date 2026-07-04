@@ -139,6 +139,7 @@ inline void init_variable(py::module_& m) {
                  return self.data().to_vector<lmp::tensor::Scalar>();
                })
           .def("zero_grad", &Variable::zero_grad)
+          .def("realize", &Variable::realize)
           .def("__repr__", [](const Variable& self) {
             std::ostringstream oss;
             oss << self;

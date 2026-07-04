@@ -41,6 +41,7 @@ void Variable::set_grad_fn(std::shared_ptr<Function> grad_fn) {
 // copy does NOT copy gradients, only data; similar to Pytorch behavior
 void Variable::copy(const Variable& other) { impl_->data.copy(other.data()); }
 void Variable::fill(tensor::Scalar item) { impl_->data.fill(item); }
+void Variable::realize() { impl_->data.realize(); }
 
 void Variable::backward() {
   LMP_CHECK(requires_grad()) << "Must be declared with requires_grad";

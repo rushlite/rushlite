@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include "lamp3/tensor/lazy/realize.hpp"
 #include "lamp3/tensor/native/shape_ops.hpp"
 
 namespace lmp::tensor {
@@ -38,6 +39,9 @@ Scalar Tensor::index(const std::vector<size_t>& idx) const {
 void Tensor::copy(const Tensor& other) { impl_->copy(*other.impl_); }
 
 void Tensor::fill(Scalar item) { impl_->fill(item); }
+
+// call to data implicitly realizes lazy graph
+void Tensor::realize() { impl_->data(); }
 
 std::ostream& operator<<(std::ostream& os, const Tensor& obj) {
   obj.impl_->print(os);

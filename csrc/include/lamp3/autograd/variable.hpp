@@ -51,6 +51,7 @@ class Variable {
 
   void copy(const Variable& other);
   void fill(tensor::Scalar item);
+  void realize();
 
   void backward();
   friend std::ostream& operator<<(std::ostream& os, const Variable& obj);
