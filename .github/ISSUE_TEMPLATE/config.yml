@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/rushlite/rushlite/issues/new
+    about: For questions about using Rushlite, feel free to open a blank issue.

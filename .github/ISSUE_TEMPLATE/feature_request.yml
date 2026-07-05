@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a new op, module, or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: >
+        Describe the use case. If this is an op or layer that PyTorch has,
+        linking its docs is a great shorthand.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would the API look like? A short usage sketch helps.
+      render: python
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Python API
+        - C++/Lamp3 core (tensor / autograd)
+        - CUDA kernels
+        - Kernel fusion (inductor)
+        - nets / layers
+        - Build system / packaging
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'd be willing to implement this myself with some guidance
