@@ -17,24 +17,3 @@ body:
       label: Proposed solution
       description: What would the API look like? A short usage sketch helps.
       render: python
-  - type: dropdown
-    id: area
-    attributes:
-      label: Area
-      options:
-        - Python API
-        - C++/Lamp3 core (tensor / autograd)
-        - CUDA kernels
-        - Kernel fusion (inductor)
-        - nets / layers
-        - Build system / packaging
-        - Docs
-        - Other
-    validations:
-      required: true
-  - type: checkboxes
-    id: contribution
-    attributes:
-      label: Contribution
-      options:
-        - label: I'd be willing to implement this myself with some guidance
