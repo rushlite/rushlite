@@ -195,5 +195,4 @@ Rushlite is licensed under the [MIT License](LICENSE).
 
 ## Contributing
 
-Contributions are welcome.
-A contributing guide is coming soon! In the meantime, feel free to [open an issue](https://github.com/rushlite/rushlite/issues) for bugs, questions, or feature requests.
+Contributions are welcome! See the [contributing guide](.github/CONTRIBUTING.md) for how to set up a development environment, run the tests (no GPU required), and submit changes. For bugs, questions, or feature requests, feel free to [open an issue](https://github.com/rushlite/rushlite/issues).
