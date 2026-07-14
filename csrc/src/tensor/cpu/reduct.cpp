@@ -8,8 +8,7 @@ template <typename PtrList, typename OpFn>
 void vectorized_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i, size_t axis,
                               const size_t* shape, const stride_t* strides) {
   stride_t outer = strides[axis];
-  // Equivalent to strides[axis - 1] for contiguous tensors, but defined for
-  // axis == 0 (strides[axis - 1] underflows to an out-of-bounds read).
+  // == strides[axis - 1] for contiguous tensors, but defined at axis == 0.
   stride_t inner = outer * static_cast<stride_t>(shape[axis]);
   stride_t idx = ((i / outer) * inner) + (i % outer);
 
