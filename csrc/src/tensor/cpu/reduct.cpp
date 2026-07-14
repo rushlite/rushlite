@@ -8,7 +8,9 @@ template <typename PtrList, typename OpFn>
 void vectorized_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i, size_t axis,
                               const size_t* shape, const stride_t* strides) {
   stride_t outer = strides[axis];
-  stride_t inner = strides[axis - 1];
+  // Equivalent to strides[axis - 1] for contiguous tensors, but defined for
+  // axis == 0 (strides[axis - 1] underflows to an out-of-bounds read).
+  stride_t inner = outer * static_cast<stride_t>(shape[axis]);
   stride_t idx = ((i / outer) * inner) + (i % outer);
 
   auto incr = OpFn::kIdentity;

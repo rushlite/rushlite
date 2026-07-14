@@ -78,12 +78,12 @@ class BinaryOperatorBase : public OperatorBase {
                                    config.device, config.dtype)};
     };
 
-    std::string bench_name =
-        name() + "_" + to_string(config.shapes) + "_" +
-        to_string(config.dtype) + "_" +
-        (config.device == lmp::tensor::DeviceType::CUDA ? "CUDA" : "CPU");
-    register_forward<2>(bench_name, op_fn, init_fn);
-    register_backward<2>(bench_name, op_fn, init_fn);
+    bool is_cuda = config.device == lmp::tensor::DeviceType::CUDA;
+    std::string bench_name = name() + "_" + to_string(config.shapes) + "_" +
+                             to_string(config.dtype) + "_" +
+                             (is_cuda ? "CUDA" : "CPU");
+    register_forward<2>(bench_name, op_fn, init_fn, is_cuda);
+    register_backward<2>(bench_name, op_fn, init_fn, is_cuda);
   }
 
  protected:
@@ -103,12 +103,12 @@ class UnaryOperatorBase : public OperatorBase {
                                   config.device, config.dtype)};
     };
 
-    std::string bench_name =
-        name() + "_" + to_string(config.shapes) + "_" +
-        to_string(config.dtype) + "_" +
-        (config.device == lmp::tensor::DeviceType::CUDA ? "CUDA" : "CPU");
-    register_forward<1>(bench_name, op_fn, init_fn);
-    register_backward<1>(bench_name, op_fn, init_fn);
+    bool is_cuda = config.device == lmp::tensor::DeviceType::CUDA;
+    std::string bench_name = name() + "_" + to_string(config.shapes) + "_" +
+                             to_string(config.dtype) + "_" +
+                             (is_cuda ? "CUDA" : "CPU");
+    register_forward<1>(bench_name, op_fn, init_fn, is_cuda);
+    register_backward<1>(bench_name, op_fn, init_fn, is_cuda);
   }
 
  protected:
@@ -134,12 +134,13 @@ class ReductOperatorBase : public OperatorBase {
         return apply_operation(inputs[0], axis);
       };
 
+      bool is_cuda = config.device == lmp::tensor::DeviceType::CUDA;
       std::string bench_name =
           name() + "_axis" + std::to_string(axis) + "_" +
           to_string(config.shapes) + "_" + to_string(config.dtype) + "_" +
-          (config.device == lmp::tensor::DeviceType::CUDA ? "CUDA" : "CPU");
-      register_forward<1>(bench_name, op_fn, init_fn);
-      register_backward<1>(bench_name, op_fn, init_fn);
+          (is_cuda ? "CUDA" : "CPU");
+      register_forward<1>(bench_name, op_fn, init_fn, is_cuda);
+      register_backward<1>(bench_name, op_fn, init_fn, is_cuda);
     }
   }
 
