@@ -8,10 +8,21 @@
 #include "lamp3/tensor/native/unary_ops.hpp"
 #include "lamp3/tensor/tensor_impl.hpp"
 #include <cmath>
+#include <type_traits>
 
 namespace lmp::tensor::detail::cuda {
 
 /// @internal
+/**
+ * @brief Compute type for the transcendental functors.
+ * @details Floating-point inputs are kept in their own precision so that
+ * `float` dispatches to the FP32 SFU intrinsics (e.g. `expf`) instead of being
+ * promoted to FP64, which runs many times slower on the SFU/FP64 units.
+ * Integral inputs are promoted to `double` so the math is still real-valued
+ * before being truncated back to the integer result type.
+ */
+template <typename T>
+using math_acc_t = std::conditional_t<std::is_floating_point_v<T>, T, double>;
 template <typename T>
 struct AddFunctor {
   __device__ __host__ T operator()(T arg1, T arg2) { return arg1 + arg2; }
@@ -30,7 +41,10 @@ struct DivFunctor {
 };
 template <typename T>
 struct PowFunctor {
-  __device__ __host__ T operator()(T arg1, T arg2) { return ::pow(arg1, arg2); }
+  __device__ __host__ T operator()(T arg1, T arg2) {
+    return static_cast<T>(std::pow(static_cast<math_acc_t<T>>(arg1),
+                                   static_cast<math_acc_t<T>>(arg2)));
+  }
 };
 template <typename T>
 struct EqFunctor {
@@ -63,43 +77,43 @@ struct NegFunctor {
 template <typename T>
 struct LogFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::log(static_cast<double>(arg)));
+    return static_cast<T>(std::log(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
 struct ExpFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::exp(static_cast<double>(arg)));
+    return static_cast<T>(std::exp(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
 struct SqrtFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::sqrt(static_cast<double>(arg)));
+    return static_cast<T>(std::sqrt(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
 struct AbsFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::abs(static_cast<double>(arg)));
+    return static_cast<T>(std::abs(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
 struct SinFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::sin(static_cast<double>(arg)));
+    return static_cast<T>(std::sin(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
 struct CosFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::cos(static_cast<double>(arg)));
+    return static_cast<T>(std::cos(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
 struct TanFunctor {
   __device__ __host__ T operator()(T arg) {
-    return static_cast<T>(::tan(static_cast<double>(arg)));
+    return static_cast<T>(std::tan(static_cast<math_acc_t<T>>(arg)));
   }
 };
 template <typename T>
