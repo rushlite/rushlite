@@ -5,8 +5,8 @@ Across the board, my library consistently faster than Pytorch for the CUDA imple
 Commands run: 
 
 ```bash
-build/benchmarks/reg_bench_long --benchmark_format=csv --benchmark_time_unit=us --benchmark_min_time=0.01s > bench_lmp.csv
-python -m pt.all_tests --output-csv bench_torch.2.csv --min-time-per-test 10
+build/benchmarks/reg_bench_long --benchmark_format=csv --benchmark_time_unit=us > bench_lmp.csv
+python -m pt.all_tests --output-csv bench_torch.csv --min-time-per-test 10
 ```
 
 - GPU: RunPod, NVIDIA RTX 4000 Ada

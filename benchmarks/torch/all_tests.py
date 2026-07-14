@@ -6,6 +6,34 @@ import operator_benchmark as op_bench
 
 import torch
 
+from benchmark_pytorch import PyTorchOperatorTestCase
+
+
+# operator_benchmark times backward as `output.mean().backward()`, so its timed
+# region includes MeanBackward on top of the op's own backward. The Lamp3
+# harness measures a bare `out.backward()` (grad seeded with ones_like), so we
+# match it here: seed ones_like(output) once, then backward straight from output
+# with no reduction in the timed loop. grad magnitude differs from mean by 1/N,
+# which is irrelevant since we only measure time.
+def _seed_ones(self):
+    self._grad = torch.ones_like(self.output)
+
+
+def _run_backward_bare(
+    self, num_runs, print_per_iter=False, gpu_sync=False, cuda_sync=False
+):
+    for _ in range(num_runs):
+        self.output.backward(self._grad, retain_graph=True)
+    if gpu_sync or cuda_sync:
+        if hasattr(torch, "accelerator"):
+            torch.accelerator.synchronize()
+        elif torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+
+PyTorchOperatorTestCase._output_mean = _seed_ones
+PyTorchOperatorTestCase.run_backward = _run_backward_bare
+
 """Microbenchmarks for all operators."""
 
 cross_product_config = {
