@@ -135,10 +135,10 @@ class ReductOperatorBase : public OperatorBase {
       };
 
       bool is_cuda = config.device == lmp::tensor::DeviceType::CUDA;
-      std::string bench_name =
-          name() + "_axis" + std::to_string(axis) + "_" +
-          to_string(config.shapes) + "_" + to_string(config.dtype) + "_" +
-          (is_cuda ? "CUDA" : "CPU");
+      std::string bench_name = name() + "_axis" + std::to_string(axis) + "_" +
+                               to_string(config.shapes) + "_" +
+                               to_string(config.dtype) + "_" +
+                               (is_cuda ? "CUDA" : "CPU");
       register_forward<1>(bench_name, op_fn, init_fn, is_cuda);
       register_backward<1>(bench_name, op_fn, init_fn, is_cuda);
     }

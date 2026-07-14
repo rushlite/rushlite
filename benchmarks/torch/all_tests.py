@@ -19,8 +19,9 @@ def _seed_ones(self):
     self._grad = torch.ones_like(self.output)
 
 
-def _run_backward_bare(self, num_runs, print_per_iter=False, gpu_sync=False,
-                       cuda_sync=False):
+def _run_backward_bare(
+    self, num_runs, print_per_iter=False, gpu_sync=False, cuda_sync=False
+):
     for _ in range(num_runs):
         self.output.backward(self._grad, retain_graph=True)
     if gpu_sync or cuda_sync:
