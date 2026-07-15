@@ -53,9 +53,9 @@ template <typename T, typename OpFn>
 void binary_kernel_vec_launcher(const T* in1, const T* in2, T* out, OpFn fn_,
                                 size_t size) {
   size_t n_vec = size / internal::kVecWidth;
-  binary_kernel_vec<T><<<internal::elemwise_blocks(n_vec),
-                         internal::kElemwiseThreads>>>(in1, in2, out, fn_, n_vec,
-                                                       size);
+  binary_kernel_vec<T>
+      <<<internal::elemwise_blocks(n_vec), internal::kElemwiseThreads>>>(
+          in1, in2, out, fn_, n_vec, size);
   LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
       << "binary_kernel_vec_launcher: kernel failed.";
 }

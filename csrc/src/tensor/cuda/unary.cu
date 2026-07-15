@@ -47,8 +47,9 @@ void unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size) {
 template <typename T, typename OpFn>
 void unary_kernel_vec_launcher(const T* in, T* out, OpFn fn_, size_t size) {
   size_t n_vec = size / internal::kVecWidth;
-  unary_kernel_vec<T><<<internal::elemwise_blocks(n_vec),
-                        internal::kElemwiseThreads>>>(in, out, fn_, n_vec, size);
+  unary_kernel_vec<T>
+      <<<internal::elemwise_blocks(n_vec), internal::kElemwiseThreads>>>(
+          in, out, fn_, n_vec, size);
   LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
       << "unary_kernel_vec_launcher: kernel failed.";
 }
@@ -60,8 +61,8 @@ void unary_dispatch_handler(UnaryMetaHandler& meta, Args&&... args) {
     LMP_DISPATCH_ALL_TYPES(meta.in()[0]->type(), [&] {
       using arg_dtype_t = scalar_t;
       auto* out_ptr = static_cast<out_dtype_t*>(meta.out().data());
-      auto* in_ptr =
-          static_cast<arg_dtype_t*>(const_cast<TensorImpl*>(meta.in()[0])->data());
+      auto* in_ptr = static_cast<arg_dtype_t*>(
+          const_cast<TensorImpl*>(meta.in()[0])->data());
       if constexpr (std::is_same_v<out_dtype_t, arg_dtype_t>) {
         using V = vec4_t<out_dtype_t>;
         if (internal::is_aligned(out_ptr, alignof(V)) &&
