@@ -17,18 +17,17 @@ LMP_FOR_EACH_CARTESIAN_PRODUCT(
     LMP_AUTOGRAD_FN_UNARY_DECL,
     ((NegationBackward, -grad.grad()),
      (ExponentialBackward, grad.data() * grad.grad()),
-     (LogarithmBackward, (1 / self.data()) * grad.grad()),
-     (SquareRootBackward, (1 / (2 * grad.data())) * grad.grad()),
+     (LogarithmBackward, grad.grad() / self.data()),
+     (SquareRootBackward, grad.grad() / (grad.data() + grad.data())),
      (AbsoluteValueBackward,
-      ((self.data() > 0.0) - (self.data() < 0.0)) * grad.grad()),
+      tensor::ops::abs_backward(self.data(), grad.grad())),
      (SineBackward, grad.grad() * tensor::ops::cos(self.data())),
-     (CosineBackward, -1 * tensor::ops::sin(self.data()) * grad.grad()),
+     (CosineBackward, (-tensor::ops::sin(self.data())) * grad.grad()),
      (TangentBackward,
-      (1.0 / (tensor::ops::cos(self.data()) * tensor::ops::cos(self.data()))) *
-          grad.grad()),
+      grad.grad() + (grad.grad() * grad.data() * grad.data())),
      (ClampBackward,
-      (tensor::ones_like(self.data()) * (self.data() > min_val_)) *
-          (self.data() < max_val_) * grad.grad())));
+      tensor::ops::clamp_backward(self.data(), grad.grad(), min_val_,
+                                  max_val_))));
 
 LMP_FOR_EACH_CARTESIAN_PRODUCT(
     LMP_AUTOGRAD_FFN_UNARY_DECL,

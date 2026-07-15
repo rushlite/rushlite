@@ -31,9 +31,26 @@ DataPtr empty_cpu(size_t byte_size) {
   return DataPtr(raw, [](void* ptr) { delete[] static_cast<char*>(ptr); });
 }
 
+template <typename T>
+void addInplaceLoop(T* destination, const T* source, size_t size) {
+#pragma omp parallel for simd
+  for (size_t i = 0; i < size; ++i) {
+    destination[i] += source[i];
+  }
+}
+
+void add_inplace_cpu(void* destination, const void* source, size_t size,
+                     DataType type) {
+  LMP_DISPATCH_ALL_TYPES(type, [&]() {
+    addInplaceLoop(static_cast<scalar_t*>(destination),
+                   static_cast<const scalar_t*>(source), size);
+  });
+}
+
 LMP_REGISTER_DISPATCH(ops::empty_stub, DeviceType::CPU, empty_cpu);
 LMP_REGISTER_DISPATCH(ops::resize_stub, DeviceType::CPU, resize_cpu);
 LMP_REGISTER_DISPATCH(ops::fill_stub, DeviceType::CPU, fill_cpu);
+LMP_REGISTER_DISPATCH(ops::add_inplace_stub, DeviceType::CPU, add_inplace_cpu);
 
 void copy_cpu(DeviceType to_device, const void* src, void* dest, size_t size,
               DataType src_dtype, DataType dest_dtype) {

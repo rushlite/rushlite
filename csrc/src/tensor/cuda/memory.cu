@@ -8,11 +8,45 @@
 #include "lamp3/common/assert.hpp"
 #include "lamp3/common/macros.hpp"
 #include "lamp3/tensor/cuda/memory.cuh"
+#include "lamp3/tensor/cuda/vec.cuh"
 #include "lamp3/tensor/data_type.hpp"
 #include "lamp3/tensor/dispatch_type.hpp"
 #include "lamp3/tensor/native/memory_ops.hpp"
 
 namespace lmp::tensor::detail::cuda {
+
+template <typename T>
+__global__ void addInplaceKernel(T* destination, const T* source, size_t n_vec,
+                                 size_t size) {
+  auto* dst_vec = reinterpret_cast<vec4_t<T>*>(destination);
+  const auto* src_vec = reinterpret_cast<const vec4_t<T>*>(source);
+  size_t idx = (blockIdx.x * blockDim.x) + threadIdx.x;
+  size_t stride = gridDim.x * blockDim.x;
+  for (size_t i = idx; i < n_vec; i += stride) {
+    vec4_t<T> value = dst_vec[i];
+    const vec4_t<T> addend = src_vec[i];
+    value.x += addend.x;
+    value.y += addend.y;
+    value.z += addend.z;
+    value.w += addend.w;
+    dst_vec[i] = value;
+  }
+  for (size_t i = (n_vec * internal::kVecWidth) + idx; i < size; i += stride) {
+    destination[i] += source[i];
+  }
+}
+
+template <typename T>
+void addInplace(T* destination, const T* source, size_t size) {
+  using V = vec4_t<T>;
+  const bool vectorized = internal::is_aligned(destination, alignof(V)) &&
+                          internal::is_aligned(source, alignof(V));
+  const size_t n_vec = vectorized ? size / internal::kVecWidth : 0;
+  const size_t work_items = vectorized ? n_vec : size;
+  addInplaceKernel<<<internal::elemwise_blocks(work_items),
+                     internal::kElemwiseThreads>>>(destination, source, n_vec,
+                                                   size);
+}
 
 DataPtr empty_cuda(size_t byte_size) {
   void* raw = nullptr;
@@ -31,6 +65,16 @@ void fill_cuda(void* ptr, size_t size, Scalar t, DataType type) {
   });
 }
 
+void add_inplace_cuda(void* destination, const void* source, size_t size,
+                      DataType type) {
+  LMP_DISPATCH_ALL_TYPES(type, [&]() {
+    addInplace(static_cast<scalar_t*>(destination),
+               static_cast<const scalar_t*>(source), size);
+    LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
+        << "add_inplace_cuda: kernel failed.";
+  });
+}
+
 void resize_cuda(DataPtr dptr, size_t old_byte_size, size_t new_byte_size) {
   void* ptr = nullptr;
   LMP_CUDA_CHECK(cudaMallocAsync(&ptr, new_byte_size, nullptr));
@@ -45,6 +89,8 @@ void resize_cuda(DataPtr dptr, size_t old_byte_size, size_t new_byte_size) {
 LMP_REGISTER_DISPATCH(ops::empty_stub, DeviceType::CUDA, empty_cuda);
 LMP_REGISTER_DISPATCH(ops::fill_stub, DeviceType::CUDA, fill_cuda);
 LMP_REGISTER_DISPATCH(ops::resize_stub, DeviceType::CUDA, resize_cuda);
+LMP_REGISTER_DISPATCH(ops::add_inplace_stub, DeviceType::CUDA,
+                      add_inplace_cuda);
 
 void vecCopyHostToDevice(const void* src, void* dest, size_t size,
                          DataType src_dtype, DataType dest_dtype) {

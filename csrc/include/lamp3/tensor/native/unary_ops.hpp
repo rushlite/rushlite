@@ -17,6 +17,9 @@ using sin_fn = TensorImpl (*)(const TensorImpl&);
 using cos_fn = TensorImpl (*)(const TensorImpl&);
 using tan_fn = TensorImpl (*)(const TensorImpl&);
 using clamp_fn = TensorImpl (*)(const TensorImpl&, Scalar, Scalar);
+using abs_backward_fn = TensorImpl (*)(const TensorImpl&, const TensorImpl&);
+using clamp_backward_fn = TensorImpl (*)(const TensorImpl&, const TensorImpl&,
+                                         Scalar, Scalar);
 
 LMP_DECLARE_DISPATCH(neg_fn, neg_stub);
 LMP_DECLARE_DISPATCH(exp_fn, exp_stub);
@@ -27,6 +30,8 @@ LMP_DECLARE_DISPATCH(sin_fn, sin_stub);
 LMP_DECLARE_DISPATCH(cos_fn, cos_stub);
 LMP_DECLARE_DISPATCH(tan_fn, tan_stub);
 LMP_DECLARE_DISPATCH(clamp_fn, clamp_stub);
+LMP_DECLARE_DISPATCH(abs_backward_fn, abs_backward_stub);
+LMP_DECLARE_DISPATCH(clamp_backward_fn, clamp_backward_stub);
 /// @endinternal
 
 /**
@@ -93,5 +98,11 @@ Tensor tan(const Tensor& a);
  * @return A new tensor with the result of the clamping
  */
 Tensor clamp(const Tensor& a, Scalar min_val, Scalar max_val);
+
+/// @internal
+Tensor abs_backward(const Tensor& input, const Tensor& grad_output);
+Tensor clamp_backward(const Tensor& input, const Tensor& grad_output,
+                      Scalar min_val, Scalar max_val);
+/// @endinternal
 
 }  // namespace lmp::tensor::ops

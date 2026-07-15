@@ -64,9 +64,14 @@ build-backend = "scikit_build_core.build"
 [tool.scikit-build]
 minimum-version = "build-system.requires"
 wheel.packages = ["src/rushlite"]
+build-dir = "build/dev"
+
+[tool.scikit-build.editable]
+rebuild = true
+verbose = true
 
 [tool.scikit-build.cmake]
-build-type = "Debug"
+build-type = "Release"
 define.LMP_ENABLE_CUDA = "OFF"
 define.LMP_ENABLE_COVERAGE = "OFF"
 define.LMP_ENABLE_TEST = "OFF"

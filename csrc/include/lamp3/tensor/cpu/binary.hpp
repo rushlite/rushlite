@@ -34,5 +34,9 @@ extern template void binary_dispatch_handler<GeFunctor>(BinaryMetaHandler&);
 extern template void binary_dispatch_handler<GtFunctor>(BinaryMetaHandler&);
 extern template void binary_dispatch_handler<LeFunctor>(BinaryMetaHandler&);
 extern template void binary_dispatch_handler<LtFunctor>(BinaryMetaHandler&);
+extern template void binary_dispatch_handler<AbsBackwardFunctor>(
+    BinaryMetaHandler&);
+extern template void binary_dispatch_handler<ClampBackwardFunctor>(
+    BinaryMetaHandler&, Scalar&, Scalar&);
 
 }  // namespace lmp::tensor::detail::cpu

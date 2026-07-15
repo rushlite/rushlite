@@ -106,5 +106,8 @@ template void binary_dispatch_handler<GeFunctor>(BinaryMetaHandler&);
 template void binary_dispatch_handler<GtFunctor>(BinaryMetaHandler&);
 template void binary_dispatch_handler<LeFunctor>(BinaryMetaHandler&);
 template void binary_dispatch_handler<LtFunctor>(BinaryMetaHandler&);
+template void binary_dispatch_handler<AbsBackwardFunctor>(BinaryMetaHandler&);
+template void binary_dispatch_handler<ClampBackwardFunctor>(BinaryMetaHandler&,
+                                                             Scalar&, Scalar&);
 
 }  // namespace lmp::tensor::detail::cuda
