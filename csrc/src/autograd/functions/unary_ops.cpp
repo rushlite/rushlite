@@ -23,11 +23,9 @@ LMP_FOR_EACH_CARTESIAN_PRODUCT(
       tensor::ops::abs_backward(self.data(), grad.grad())),
      (SineBackward, grad.grad() * tensor::ops::cos(self.data())),
      (CosineBackward, (-tensor::ops::sin(self.data())) * grad.grad()),
-     (TangentBackward,
-      grad.grad() + (grad.grad() * grad.data() * grad.data())),
-     (ClampBackward,
-      tensor::ops::clamp_backward(self.data(), grad.grad(), min_val_,
-                                  max_val_))));
+     (TangentBackward, grad.grad() + (grad.grad() * grad.data() * grad.data())),
+     (ClampBackward, tensor::ops::clamp_backward(self.data(), grad.grad(),
+                                                 min_val_, max_val_))));
 
 LMP_FOR_EACH_CARTESIAN_PRODUCT(
     LMP_AUTOGRAD_FFN_UNARY_DECL,

@@ -143,8 +143,6 @@ _binary_same_size = config_list(
         [[256, 256], [256, 256]],
         [[512, 512], [512, 512]],
         [[1024, 1024], [1024, 1024]],
-        [[2048, 2048], [2048, 2048]],
-        [[4096, 4096], [4096, 4096]],
     ],
     cross_product_configs=_cross_base,
     tags=["long"],
@@ -162,7 +160,7 @@ _binary_broadcast = config_list(
 _binary_short = config_list(
     attr_names=["in_one", "in_two"],
     attrs=[
-        [[8192, 8192], [8192, 8192]],
+        [[512, 512], [512, 512]],
     ],
     cross_product_configs=_cross_base,
     tags=["short"],
@@ -181,8 +179,6 @@ _unary_long = config_list(
         [[256, 256]],
         [[512, 512]],
         [[1024, 1024]],
-        [[2048, 2048]],
-        [[4096, 4096]],
     ],
     cross_product_configs=_cross_base,
     tags=["long"],
@@ -190,7 +186,7 @@ _unary_long = config_list(
 
 _unary_short = config_list(
     attr_names=["in_one"],
-    attrs=[[[8192, 8192]]],
+    attrs=[[[512, 512]]],
     cross_product_configs=_cross_base,
     tags=["short"],
 )

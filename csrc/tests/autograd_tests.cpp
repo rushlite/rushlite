@@ -164,8 +164,8 @@ TEST_P(VariableOpTest, LogTest) {
 }
 
 TEST_P(VariableOpTest, SqrtGradientTest) {
-  Tensor data(std::vector<Scalar>{0.25, 1.0, 4.0, 9.0},
-              std::vector<size_t>{4U}, device_, DataType::Float32);
+  Tensor data(std::vector<Scalar>{0.25, 1.0, 4.0, 9.0}, std::vector<size_t>{4U},
+              device_, DataType::Float32);
   Variable input(data, true);
   Variable result = lmp::autograd::ops::sqrt(input);
   result.backward();
@@ -176,17 +176,16 @@ TEST_P(VariableOpTest, SqrtGradientTest) {
 }
 
 TEST_P(VariableOpTest, CosGradientTest) {
-  Tensor data(std::vector<Scalar>{-1.0, 0.0, 0.5, 1.0},
-              std::vector<size_t>{4U}, device_, DataType::Float32);
+  Tensor data(std::vector<Scalar>{-1.0, 0.0, 0.5, 1.0}, std::vector<size_t>{4U},
+              device_, DataType::Float32);
   Variable input(data, true);
   Variable result = lmp::autograd::ops::cos(input);
   result.backward();
 
   EXPECT_THAT(getTenData(input.grad()),
-              ::testing::Pointwise(
-                  ::testing::FloatNear(kEps),
-                  {-std::sin(-1.0), -std::sin(0.0), -std::sin(0.5),
-                   -std::sin(1.0)}));
+              ::testing::Pointwise(::testing::FloatNear(kEps),
+                                   {-std::sin(-1.0), -std::sin(0.0),
+                                    -std::sin(0.5), -std::sin(1.0)}));
 }
 
 TEST_P(VariableOpTest, TanGradientTest) {
@@ -196,13 +195,11 @@ TEST_P(VariableOpTest, TanGradientTest) {
   Variable result = lmp::autograd::ops::tan(input);
   result.backward();
 
-  EXPECT_THAT(
-      getTenData(input.grad()),
-      ::testing::Pointwise(
-          ::testing::FloatNear(kEps),
-          {1.0 + std::tan(-0.75) * std::tan(-0.75),
-           1.0 + std::tan(-0.25) * std::tan(-0.25), 1.0,
-           1.0 + std::tan(0.5) * std::tan(0.5)}));
+  EXPECT_THAT(getTenData(input.grad()),
+              ::testing::Pointwise(::testing::FloatNear(kEps),
+                                   {1.0 + std::tan(-0.75) * std::tan(-0.75),
+                                    1.0 + std::tan(-0.25) * std::tan(-0.25),
+                                    1.0, 1.0 + std::tan(0.5) * std::tan(0.5)}));
 }
 
 TEST_P(VariableOpTest, ClampGradientUsesStrictBounds) {
@@ -218,15 +215,15 @@ TEST_P(VariableOpTest, ClampGradientUsesStrictBounds) {
 }
 
 TEST_P(VariableOpTest, AbsGradientTest) {
-  Tensor data(std::vector<Scalar>{-2.0, 0.0, 3.0},
-              std::vector<size_t>{3U}, device_, DataType::Float32);
+  Tensor data(std::vector<Scalar>{-2.0, 0.0, 3.0}, std::vector<size_t>{3U},
+              device_, DataType::Float32);
   Variable input(data, true);
   Variable result = lmp::autograd::ops::abs(input);
   result.backward();
 
-  EXPECT_THAT(getTenData(input.grad()),
-              ::testing::Pointwise(::testing::FloatNear(kEps),
-                                   {-1.0, 0.0, 1.0}));
+  EXPECT_THAT(
+      getTenData(input.grad()),
+      ::testing::Pointwise(::testing::FloatNear(kEps), {-1.0, 0.0, 1.0}));
 }
 
 TEST_P(VariableOpTest, MatMulTest) {
@@ -511,11 +508,9 @@ TEST_P(VariableOpTest, InplaceGradientAccumulationPreservesSource) {
 
   EXPECT_EQ(const_cast<Tensor&>(a_.grad()).data(), grad_storage);
   EXPECT_THAT(getTenData(a_.grad()),
-              ::testing::Pointwise(::testing::FloatNear(kEps),
-                                   source_before));
+              ::testing::Pointwise(::testing::FloatNear(kEps), source_before));
   EXPECT_THAT(getTenData(source),
-              ::testing::Pointwise(::testing::FloatNear(kEps),
-                                   source_before));
+              ::testing::Pointwise(::testing::FloatNear(kEps), source_before));
 }
 
 TEST_P(VariableOpTest, GradModeDisablesRecordingTest) {

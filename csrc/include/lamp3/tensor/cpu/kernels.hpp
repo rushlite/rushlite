@@ -132,7 +132,13 @@ struct ClampFunctor {
 template <typename T>
 struct AbsBackwardFunctor {
   T operator()(T input, T grad) {
-    return input > T{0} ? grad : (input < T{0} ? -grad : T{0});
+    if (input > T{0}) {
+      return grad;
+    }
+    if (input < T{0}) {
+      return -grad;
+    }
+    return T{0};
   }
 };
 template <typename T>

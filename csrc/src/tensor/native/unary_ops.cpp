@@ -62,10 +62,10 @@ Tensor abs_backward(const Tensor& input, const Tensor& grad_output) {
       << "abs_backward requires tensors with identical shapes";
   LMP_CHECK(input.type() == grad_output.type())
       << "abs_backward requires tensors with identical dtypes";
-  return detail::UnsafeTensorAccessor::fromImpl(std::make_shared<TensorImpl>(
-      abs_backward_stub()(input.device(),
-                          *detail::UnsafeTensorAccessor::getImpl(input),
-                          *detail::UnsafeTensorAccessor::getImpl(grad_output))));
+  return detail::UnsafeTensorAccessor::fromImpl(
+      std::make_shared<TensorImpl>(abs_backward_stub()(
+          input.device(), *detail::UnsafeTensorAccessor::getImpl(input),
+          *detail::UnsafeTensorAccessor::getImpl(grad_output))));
 }
 
 Tensor clamp_backward(const Tensor& input, const Tensor& grad_output,
@@ -76,8 +76,8 @@ Tensor clamp_backward(const Tensor& input, const Tensor& grad_output,
       << "clamp_backward requires tensors with identical shapes";
   LMP_CHECK(input.type() == grad_output.type())
       << "clamp_backward requires tensors with identical dtypes";
-  return detail::UnsafeTensorAccessor::fromImpl(std::make_shared<TensorImpl>(
-      clamp_backward_stub()(
+  return detail::UnsafeTensorAccessor::fromImpl(
+      std::make_shared<TensorImpl>(clamp_backward_stub()(
           input.device(), *detail::UnsafeTensorAccessor::getImpl(input),
           *detail::UnsafeTensorAccessor::getImpl(grad_output), min_val,
           max_val)));
