@@ -162,7 +162,7 @@ _binary_broadcast = config_list(
 _binary_short = config_list(
     attr_names=["in_one", "in_two"],
     attrs=[
-        [[512, 512], [512, 512]],
+        [[8192, 8192], [8192, 8192]],
     ],
     cross_product_configs=_cross_base,
     tags=["short"],
@@ -190,7 +190,7 @@ _unary_long = config_list(
 
 _unary_short = config_list(
     attr_names=["in_one"],
-    attrs=[[[512, 512]]],
+    attrs=[[[8192, 8192]]],
     cross_product_configs=_cross_base,
     tags=["short"],
 )
