@@ -6,6 +6,7 @@
 
 #include "data_type.hpp"
 #include "device_type.hpp"
+#include "cuda.hpp"
 #include "tensor.hpp"
 #include "variable.hpp"
 #include "constructor.hpp"
@@ -20,6 +21,7 @@
 PYBIND11_MODULE(_C, m) {
     init_data_type(m);
     init_device_type(m);
+    init_cuda(m);
     init_tensor(m);
     init_variable(m);
     init_constructor(m);

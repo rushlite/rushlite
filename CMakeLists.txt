@@ -4,7 +4,6 @@ project(lamp3 LANGUAGES CXX)
 option(LMP_ENABLE_CUDA "Compile with CUDA support" OFF)
 option(LMP_ENABLE_COVERAGE "Enable code coverage" OFF)
 option(LMP_ENABLE_TEST "Enable testing" OFF)
-option(LMP_ENABLE_BENCH "Enable benchmarks" OFF)
 
 if(LMP_ENABLE_CUDA)
   add_definitions(-DLMP_ENABLE_CUDA)
@@ -83,9 +82,6 @@ add_subdirectory(csrc/bindings)
 if(LMP_ENABLE_TEST)
   add_subdirectory(csrc/tests)
 endif()
-if(LMP_ENABLE_BENCH)
-  add_subdirectory(benchmarks)
-endif()
 
 # INSTALLATION ---------------------------------
 install(
@@ -125,7 +121,6 @@ file(GLOB_RECURSE ALL_CPP_SOURCE
   "${CMAKE_CURRENT_SOURCE_DIR}/csrc/src/autograd/*.[ch]pp"
   "${CMAKE_CURRENT_SOURCE_DIR}/csrc/src/bindings/*.[ch]pp"
   "${CMAKE_CURRENT_SOURCE_DIR}/csrc/tests/*.[ch]pp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/*.[ch]pp" 
 )
 
 file(GLOB_RECURSE ALL_CUDA_SOURCE
@@ -148,7 +143,7 @@ endif()
 # LINTING ---------------------------------
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 if(CLANG_TIDY_EXE)
-  set(HEADER_FILTER_REGEX "${CMAKE_CURRENT_SOURCE_DIR}/(csrc|benchmarks)/.*")
+  set(HEADER_FILTER_REGEX "${CMAKE_CURRENT_SOURCE_DIR}/csrc/.*")
 
   if (LMP_ENABLE_CUDA)
     add_custom_target(lint
