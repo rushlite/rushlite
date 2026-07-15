@@ -2,37 +2,15 @@
 
 #include "lamp3/common/macros.hpp"
 #include "lamp3/tensor/cuda/matrix.cuh"
+#include "lamp3/tensor/cuda/vec.cuh"
 #include "lamp3/tensor/data_type.hpp"
 
 namespace lmp::tensor::detail::cuda {
 
 namespace {
 
-template <typename T>
-struct Vec4;
-template <>
-struct Vec4<int16_t> {
-  using type = short4;
-};
-template <>
-struct Vec4<int> {
-  using type = int4;
-};
-template <>
-struct Vec4<int64_t> {
-  using type = longlong4;
-};
-template <>
-struct Vec4<float> {
-  using type = float4;
-};
-template <>
-struct Vec4<double> {
-  using type = double4;
-};
-
-template <typename T>
-inline constexpr bool kHasVec4 = !std::is_same_v<T, bool>;
+// Vec4<T> / kHasVec4<T> live in cuda/vec.cuh (shared with the elementwise
+// kernels).
 
 // copied from here: https://github.com/clay-arras/sgemm-cublas-bench
 // this could probably be faster with better locality and warp magic but meh
