@@ -24,13 +24,14 @@ if TYPE_CHECKING:
 @dataclass
 class RunConfig:
     """Parameters passed from the CLI to the runner."""
-    tag: str = "short"          # "short" | "long" | "all"
+
+    tag: str = "short"  # "short" | "long" | "all"
     devices: list[str] | None = None  # None = all
     backends: list[str] | None = None  # None = all registered
     warmup: int = 100
     min_time_per_test: float = 1.0
     num_runs: int = 1
-    iterations: int | None = None   # force fixed count (disables adaptive)
+    iterations: int | None = None  # force fixed count (disables adaptive)
     output_dir: str | None = None
     verbose: bool = False
 

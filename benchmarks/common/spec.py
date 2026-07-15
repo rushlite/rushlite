@@ -8,10 +8,10 @@ import itertools
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Config helpers (mirrors benchmark_utils.py)
 # ---------------------------------------------------------------------------
+
 
 def cross_product_configs(**axes) -> list[tuple[dict, ...]]:
     """Return the cartesian product of all axis values.
@@ -64,6 +64,7 @@ def config_list(
 # Canonical shape-key generation
 # ---------------------------------------------------------------------------
 
+
 def shape_key(*, in_one=None, in_two=None, R=None, V=None, dim=None, **_extra) -> str:
     """Return a canonical string key for a shape config.
 
@@ -95,14 +96,16 @@ def shape_key(*, in_one=None, in_two=None, R=None, V=None, dim=None, **_extra) -
 # Dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BenchCase:
     """A single fully-resolved benchmark case."""
+
     op: str
-    category: str           # "binary" | "unary" | "reduction"
+    category: str  # "binary" | "unary" | "reduction"
     device: str
     dtype: str
-    shape: str              # canonical key from shape_key()
+    shape: str  # canonical key from shape_key()
     tag: str
     params: dict = field(default_factory=dict)
 
@@ -113,10 +116,11 @@ class BenchCase:
 @dataclass
 class OpEntry:
     """One operator with its full config list."""
+
     name: str
-    category: str           # "binary" | "unary" | "reduction"
-    configs: list[list[dict]]   # each row is a list of single-key dicts
-    input_recipe: str       # "randn" | "rand"
+    category: str  # "binary" | "unary" | "reduction"
+    configs: list[list[dict]]  # each row is a list of single-key dicts
+    input_recipe: str  # "randn" | "rand"
     params: dict = field(default_factory=dict)
 
 
@@ -226,31 +230,37 @@ def _build_catalog() -> list[OpEntry]:
 
     for op in _BINARY_OPS:
         params = {"min": 0.25, "max": 0.75} if op == "clamp" else {}
-        catalog.append(OpEntry(
-            name=op,
-            category="binary",
-            configs=_binary_configs,
-            input_recipe="randn",
-            params=params,
-        ))
+        catalog.append(
+            OpEntry(
+                name=op,
+                category="binary",
+                configs=_binary_configs,
+                input_recipe="randn",
+                params=params,
+            )
+        )
 
     for op in _UNARY_OPS:
         params = {"min": 0.25, "max": 0.75} if op == "clamp" else {}
-        catalog.append(OpEntry(
-            name=op,
-            category="unary",
-            configs=_unary_configs,
-            input_recipe="rand",
-            params=params,
-        ))
+        catalog.append(
+            OpEntry(
+                name=op,
+                category="unary",
+                configs=_unary_configs,
+                input_recipe="rand",
+                params=params,
+            )
+        )
 
     for op in _REDUCTION_OPS:
-        catalog.append(OpEntry(
-            name=op,
-            category="reduction",
-            configs=_reduction_configs,
-            input_recipe="rand",
-        ))
+        catalog.append(
+            OpEntry(
+                name=op,
+                category="reduction",
+                configs=_reduction_configs,
+                input_recipe="rand",
+            )
+        )
 
     return catalog
 
@@ -274,14 +284,16 @@ def resolve_cases(entry: OpEntry) -> list[BenchCase]:
         tag = flat.get("tags", "")
         device = flat.get("device", "cpu")
         key = shape_key(**flat)
-        cases.append(BenchCase(
-            op=entry.name,
-            category=entry.category,
-            device=device,
-            dtype=_DTYPE,
-            shape=key,
-            tag=tag,
-            params=entry.params,
-            raw=flat,
-        ))
+        cases.append(
+            BenchCase(
+                op=entry.name,
+                category=entry.category,
+                device=device,
+                dtype=_DTYPE,
+                shape=key,
+                tag=tag,
+                params=entry.params,
+                raw=flat,
+            )
+        )
     return cases

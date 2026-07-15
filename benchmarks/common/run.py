@@ -14,7 +14,6 @@ import argparse
 import importlib
 import sys
 
-
 _BACKEND_MODULE_MAP = {
     # logical name -> importable module path
     "torch": "benchmarks.backends.torch_backend",
@@ -50,7 +49,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="+",
         default=["rushlite", "torch"],
         help="Backend names to benchmark. Each name must have a corresponding "
-             "module in benchmarks/backends/.",
+        "module in benchmarks/backends/.",
     )
     p.add_argument(
         "--tag",

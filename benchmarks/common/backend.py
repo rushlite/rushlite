@@ -16,7 +16,9 @@ class Backend(ABC):
     ops: dict[str, Callable]  # op_name -> fn(*tensors) -> output tensor
 
     @abstractmethod
-    def make_input(self, shape: list[int], device: str, dtype: str, requires_grad: bool):
+    def make_input(
+        self, shape: list[int], device: str, dtype: str, requires_grad: bool
+    ):
         """Allocate a random input tensor on the given device/dtype."""
         ...
 
