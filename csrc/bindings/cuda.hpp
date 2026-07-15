@@ -10,7 +10,7 @@ inline void init_cuda(py::module_& m) {
 
   cuda.def("sync", []() {
 #ifdef LMP_ENABLE_CUDA
-    LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize());
+    cudaDeviceSynchronize();
 #endif
   });
 
