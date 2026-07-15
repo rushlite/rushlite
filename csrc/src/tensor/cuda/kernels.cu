@@ -48,6 +48,21 @@ TensorImpl clamp_cuda(const TensorImpl& a, Scalar min_val, Scalar max_val) {
   return meta.out();
 }
 
+TensorImpl abs_backward_cuda(const TensorImpl& input,
+                             const TensorImpl& grad_output) {
+  BinaryMetaHandler meta(&input, &grad_output);
+  binary_dispatch_handler<AbsBackwardFunctor>(meta);
+  return meta.out();
+}
+
+TensorImpl clamp_backward_cuda(const TensorImpl& input,
+                               const TensorImpl& grad_output, Scalar min_val,
+                               Scalar max_val) {
+  BinaryMetaHandler meta(&input, &grad_output);
+  binary_dispatch_handler<ClampBackwardFunctor>(meta, min_val, max_val);
+  return meta.out();
+}
+
 TensorImpl transpose_cuda(const TensorImpl& a) {
   LMP_CHECK(a.shape().size() == 2) << "Invalid argument, transpose can only be "
                                       "performed on matrices of dim 2";
@@ -127,6 +142,10 @@ LMP_REGISTER_DISPATCH(ops::sin_stub, DeviceType::CUDA, sin_cuda);
 LMP_REGISTER_DISPATCH(ops::cos_stub, DeviceType::CUDA, cos_cuda);
 LMP_REGISTER_DISPATCH(ops::tan_stub, DeviceType::CUDA, tan_cuda);
 LMP_REGISTER_DISPATCH(ops::clamp_stub, DeviceType::CUDA, clamp_cuda);
+LMP_REGISTER_DISPATCH(ops::abs_backward_stub, DeviceType::CUDA,
+                      abs_backward_cuda);
+LMP_REGISTER_DISPATCH(ops::clamp_backward_stub, DeviceType::CUDA,
+                      clamp_backward_cuda);
 
 LMP_REGISTER_DISPATCH(ops::matmul_stub, DeviceType::CUDA, matmul_cuda);
 LMP_REGISTER_DISPATCH(ops::transpose_stub, DeviceType::CUDA, transpose_cuda);

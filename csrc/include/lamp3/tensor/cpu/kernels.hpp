@@ -115,7 +115,7 @@ struct TanFunctor {
 template <typename T>
 struct ClampFunctor {
   explicit ClampFunctor(Scalar min_val, Scalar max_val)
-      : min_val_(min_val), max_val_(max_val) {}
+      : min_val_(static_cast<T>(min_val)), max_val_(static_cast<T>(max_val)) {}
   T operator()(T arg) {
     if (arg < min_val_) {
       return min_val_;
@@ -127,7 +127,30 @@ struct ClampFunctor {
   }
 
  private:
-  Scalar min_val_, max_val_;
+  T min_val_, max_val_;
+};
+template <typename T>
+struct AbsBackwardFunctor {
+  T operator()(T input, T grad) {
+    if (input > T{0}) {
+      return grad;
+    }
+    if (input < T{0}) {
+      return -grad;
+    }
+    return T{0};
+  }
+};
+template <typename T>
+struct ClampBackwardFunctor {
+  ClampBackwardFunctor(Scalar min_val, Scalar max_val)
+      : min_val_(static_cast<T>(min_val)), max_val_(static_cast<T>(max_val)) {}
+  T operator()(T input, T grad) {
+    return input > min_val_ && input < max_val_ ? grad : T{0};
+  }
+
+ private:
+  T min_val_, max_val_;
 };
 template <typename T>
 struct SumFunctor {
@@ -173,6 +196,11 @@ TensorImpl sin_cpu(const TensorImpl& a);
 TensorImpl cos_cpu(const TensorImpl& a);
 TensorImpl tan_cpu(const TensorImpl& a);
 TensorImpl clamp_cpu(const TensorImpl& a, Scalar min_val, Scalar max_val);
+TensorImpl abs_backward_cpu(const TensorImpl& input,
+                            const TensorImpl& grad_output);
+TensorImpl clamp_backward_cpu(const TensorImpl& input,
+                              const TensorImpl& grad_output, Scalar min_val,
+                              Scalar max_val);
 
 TensorImpl matmul_cpu(const TensorImpl& a, const TensorImpl& b);
 TensorImpl transpose_cpu(const TensorImpl& a);

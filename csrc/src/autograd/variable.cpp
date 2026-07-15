@@ -31,7 +31,7 @@ void Variable::incr_grad(const tensor::Tensor& other_grad) {
   LMP_CHECK(requires_grad()) << "Cannot access grad() if requires_grad = false";
   LMP_INTERNAL_ASSERT(other_grad.shape() == impl_->grad.shape())
       << "There should be no broadcasting in incr_grad";
-  impl_->grad = impl_->grad + other_grad;
+  tensor::ops::add_inplace(impl_->grad, other_grad);
 }
 void Variable::set_grad_fn(std::shared_ptr<Function> grad_fn) {
   LMP_CHECK(requires_grad()) << "Cannot access grad() if requires_grad = false";

@@ -26,7 +26,6 @@ class ListDevicePtr {
         cudaMemcpyAsync(raw, obj_list, sizeof(T) * size, cudaMemcpyHostToDevice));
     ptr_ = std::shared_ptr<T[]>(raw, [size](T* p) {
       LMP_CUDA_CHECK(cudaFreeAsync(p, 0));
-      CudaStreamManager::instance().onFree(sizeof(T) * size);
     });
   }
 
