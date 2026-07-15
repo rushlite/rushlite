@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "lamp3/common/assert.hpp"
+#include "lamp3/tensor/lazy/capture_mode.hpp"
 #include "lamp3/tensor/lazy/functions/elementwise_binary.hpp"
 #include "lamp3/tensor/lazy/lazy_backend.hpp"
 #include "lamp3/tensor/lazy/lazy_function.hpp"
@@ -28,7 +29,7 @@ Tensor add(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::AddFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -40,7 +41,7 @@ Tensor sub(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::SubFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -52,7 +53,7 @@ Tensor mul(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::MulFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -64,7 +65,7 @@ Tensor div(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::DivFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -76,7 +77,7 @@ Tensor pow(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::PowFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -89,7 +90,7 @@ Tensor eq(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::EqFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -101,7 +102,7 @@ Tensor ne(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::NeFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -113,7 +114,7 @@ Tensor ge(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::GeFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -125,7 +126,7 @@ Tensor le(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::LeFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -137,7 +138,7 @@ Tensor gt(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::GtFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));
@@ -149,7 +150,7 @@ Tensor lt(const Tensor& a, const Tensor& b) {
   LMP_CHECK(a.device() == b.device()) << "Tensors are on different devices";
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
   std::shared_ptr<TensorImpl> bi = detail::UnsafeTensorAccessor::getImpl(b);
-  if (lazy::backend(a.device()) != nullptr) {
+  if (lazy::should_capture(a.device())) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::LtFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai, bi})));

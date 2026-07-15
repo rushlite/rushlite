@@ -1,5 +1,6 @@
 # Build directories and CMake
 build/
+build_*/
 **/build/
 CMakeFiles/
 CMakeCache.txt
@@ -46,6 +47,9 @@ dist/
 data/
 models/
 checkpoints/
+
+# Benchmark output
+benchmarks/results/
 
 # Caching and coverage
 .cache/
