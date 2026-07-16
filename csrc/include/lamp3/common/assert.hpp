@@ -42,21 +42,6 @@ class CheckStream : public BaseStream<CheckStream> {
   }
 };
 
-#ifdef LMP_DEBUG
-
-class AssertStream : public BaseStream<AssertStream> {
- public:
-  AssertStream(const char* file, int line, const char* func, const char* expr) {
-    os_ << "Lamp3: Internal assertion failure at " << file << ':' << line
-        << " in " << func << ". ASSERT(" << expr << ") failed: ";
-  }
-
-  [[noreturn]] void trigger() const {
-    std::cerr << os_.str() << std::endl;
-    std::terminate();
-  }
-};
-
 #ifdef LMP_ENABLE_CUDA
 class CudaAssertStream : public BaseStream<CudaAssertStream> {
  public:
@@ -72,6 +57,21 @@ class CudaAssertStream : public BaseStream<CudaAssertStream> {
   }
 };
 #endif
+
+#ifdef LMP_DEBUG
+
+class AssertStream : public BaseStream<AssertStream> {
+ public:
+  AssertStream(const char* file, int line, const char* func, const char* expr) {
+    os_ << "Lamp3: Internal assertion failure at " << file << ':' << line
+        << " in " << func << ". ASSERT(" << expr << ") failed: ";
+  }
+
+  [[noreturn]] void trigger() const {
+    std::cerr << os_.str() << std::endl;
+    std::terminate();
+  }
+};
 
 #endif
 
@@ -89,6 +89,18 @@ struct Voidify {
 #define LMP_CHECK(cond) \
     (cond) ? (void)0 : ::lmp::detail::Voidify() & ::lmp::detail::CheckStream(__FILE__, __LINE__, __func__, #cond)  // NOLINT(bugprone-macro-parentheses)
 // clang-format on
+
+#ifdef LMP_ENABLE_CUDA
+// TODO(clay-arras): Separate CUDA check and internal assertion failure handling.
+#define LMP_CUDA_CHECK(call)                                          \
+  if (const cudaError_t LMP_CUDA_ERROR = (call);                      \
+      LMP_CUDA_ERROR == cudaSuccess)                                  \
+    ;                                                                 \
+  else                                                                \
+    ::lmp::detail::Voidify() &                                        \
+        ::lmp::detail::CudaAssertStream(__FILE__, __LINE__, __func__, \
+                                        LMP_CUDA_ERROR)
+#endif
 
 #ifdef LMP_DEBUG
 
@@ -123,14 +135,6 @@ inline bool cuda_assert_once(F&& f) {
         ::lmp::detail::CudaAssertStream(__FILE__, __LINE__, __func__, \
                                         LMP_CUDA_ERROR)
 
-#define LMP_CUDA_CHECK(call)                                          \
-  if (const cudaError_t LMP_CUDA_ERROR = (call);                      \
-      LMP_CUDA_ERROR == cudaSuccess)                                  \
-    ;                                                                 \
-  else                                                                \
-    ::lmp::detail::Voidify() &                                        \
-        ::lmp::detail::CudaAssertStream(__FILE__, __LINE__, __func__, \
-                                        LMP_CUDA_ERROR)
 #endif
 
 #define LMP_PRINT(fmt, ...)                                              \
@@ -153,7 +157,5 @@ struct NullStream {
   true ? (void)0 : ::lmp::detail::Voidify() & ::lmp::detail::NullStream()
 #define LMP_CUDA_INTERNAL_ASSERT(call) \
   true ? (void)0 : ::lmp::detail::Voidify() & ::lmp::detail::NullStream()
-#define LMP_CUDA_CHECK(call) \
-  (call) ? (void)0 : ::lmp::detail::Voidify() & ::lmp::detail::NullStream()
 
 #endif
