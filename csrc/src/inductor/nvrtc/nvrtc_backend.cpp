@@ -1,5 +1,12 @@
 #include "lamp3/inductor/nvrtc/nvrtc_backend.hpp"
 
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <utility>
+
 namespace lmp::inductor {
 
 namespace {
@@ -9,18 +16,70 @@ struct LoadedKernel {
   CUfunction func;
 };
 
-LoadedKernel compile_and_load(const std::string& src) {
-  nvrtcProgram prog;
-  NVRTC_CHECK(
-      nvrtcCreateProgram(&prog, src.c_str(), "fused.cu", 0, nullptr, nullptr));
+struct KernelCacheKey {
+  std::string source;
+  CUcontext context;
+  int compute_major;
+  int compute_minor;
 
-  int dev = 0;
-  CUDART_CHECK(cudaGetDevice(&dev));
-  cudaDeviceProp props;
-  CUDART_CHECK(cudaGetDeviceProperties(&props, dev));
+  bool operator==(const KernelCacheKey& other) const {
+    return source == other.source && context == other.context &&
+           compute_major == other.compute_major &&
+           compute_minor == other.compute_minor;
+  }
+};
+
+void hash_combine(size_t& seed, size_t value) {
+  seed ^= value + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
+struct KernelCacheKeyHash {
+  size_t operator()(const KernelCacheKey& key) const {
+    size_t hash = std::hash<std::string>{}(key.source);
+    hash_combine(
+        hash,
+        std::hash<std::uintptr_t>{}(
+            reinterpret_cast<std::uintptr_t>(key.context)));
+    hash_combine(hash, std::hash<int>{}(key.compute_major));
+    hash_combine(hash, std::hash<int>{}(key.compute_minor));
+    return hash;
+  }
+};
+
+void initialize_cuda_driver() {
+  static std::once_flag init_flag;
+  std::call_once(init_flag, [] { CU_CHECK(cuInit(0)); });
+}
+
+KernelCacheKey make_cache_key(const std::string& source) {
+  initialize_cuda_driver();
+
+  CUcontext context = nullptr;
+  CU_CHECK(cuCtxGetCurrent(&context));
+  LMP_CHECK(context != nullptr)
+      << "NVRTC kernel compilation requires a current CUDA context";
+
+  CUdevice device;
+  CU_CHECK(cuCtxGetDevice(&device));
+
+  int compute_major = 0;
+  int compute_minor = 0;
+  CU_CHECK(cuDeviceGetAttribute(
+      &compute_major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device));
+  CU_CHECK(cuDeviceGetAttribute(
+      &compute_minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device));
+
+  return {source, context, compute_major, compute_minor};
+}
+
+LoadedKernel compile_and_load(const KernelCacheKey& key) {
+  nvrtcProgram prog;
+  NVRTC_CHECK(nvrtcCreateProgram(
+      &prog, key.source.c_str(), "fused.cu", 0, nullptr, nullptr));
+
   const std::string arch = "--gpu-architecture=sm_" +
-                           std::to_string(props.major) +
-                           std::to_string(props.minor);
+                           std::to_string(key.compute_major) +
+                           std::to_string(key.compute_minor);
   const char* opts[] = {arch.c_str(), "--std=c++17"};
 
   const nvrtcResult cres = nvrtcCompileProgram(prog, 2, opts);
@@ -31,7 +90,7 @@ LoadedKernel compile_and_load(const std::string& src) {
     nvrtcGetProgramLog(prog, log.data());
     LMP_CHECK(false) << "NVRTC compile failed:\n"
                      << log << "\n--- generated source ---\n"
-                     << src;
+                     << key.source;
   }
 
   size_t cubin_size = 0;
@@ -40,13 +99,37 @@ LoadedKernel compile_and_load(const std::string& src) {
   NVRTC_CHECK(nvrtcGetCUBIN(prog, cubin.data()));
   NVRTC_CHECK(nvrtcDestroyProgram(&prog));
 
-  static std::once_flag init_flag;
-  std::call_once(init_flag, [] { CU_CHECK(cuInit(0)); });
-
   LoadedKernel k;
   CU_CHECK(cuModuleLoadData(&k.module, cubin.data()));
   CU_CHECK(cuModuleGetFunction(&k.func, k.module, kFusedKernelName));
   return k;
+}
+
+class KernelCache {
+ public:
+  LoadedKernel get_or_compile(const std::string& source) {
+    KernelCacheKey key = make_cache_key(source);
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    const auto cached = kernels_.find(key);
+    if (cached != kernels_.end())
+      return cached->second;
+
+    const LoadedKernel kernel = compile_and_load(key);
+    const auto [inserted, did_insert] =
+        kernels_.emplace(std::move(key), kernel);
+    LMP_CHECK(did_insert) << "failed to insert compiled kernel into cache";
+    return inserted->second;
+  }
+
+ private:
+  std::mutex mutex_;
+  std::unordered_map<KernelCacheKey, LoadedKernel, KernelCacheKeyHash> kernels_;
+};
+
+KernelCache& kernel_cache() {
+  static KernelCache* cache = new KernelCache;
+  return *cache;
 }
 
 void launch(CUfunction f, std::vector<void*>& args, size_t n) {
@@ -85,7 +168,7 @@ void NVRTCInductorBackend::realize(tensor::TensorImpl* impl) {
     return;
   }
 
-  LoadedKernel k = compile_and_load(src);
+  const LoadedKernel k = kernel_cache().get_or_compile(src);
 
   void* out_ptr = out.data();
   std::vector<void*> in_ptrs;
@@ -102,7 +185,6 @@ void NVRTCInductorBackend::realize(tensor::TensorImpl* impl) {
   args.push_back(&n_arg);
 
   launch(k.func, args, n);
-  CU_CHECK(cuModuleUnload(k.module));
 
   impl->set_realized(out);
 }
