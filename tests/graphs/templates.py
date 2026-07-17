@@ -50,7 +50,7 @@ def _barrier_build(ops, xs):
     # ambiguous -- the fresh leaves in run 2 break the tie first.
     t = ops.bin[0](xs[0], xs[1])  # fusible run 1: 2 binary on (16,16)
     t = ops.bin[1](t, xs[2])
-    t = ops.unary[0](t)  # barrier: unary
+    t = ops.unary[0](t)  # unary stays in the pre-matmul fusion group
     t = ops.matmul(t, xs[3])  # barrier: matmul (16,16)@(16,8) -> (16,8)
     t = ops.bin_bounded[0](t, xs[4])  # guarded div/pow
     t = ops.bin[2](t, xs[5])  # fusible run 2: 2 binary on (16,8)

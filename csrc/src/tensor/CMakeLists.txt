@@ -20,6 +20,7 @@ set(TENSOR_SOURCES
   lazy/lazy_backend.cpp
   lazy/realize.cpp
   lazy/functions/elementwise_binary.cpp
+  lazy/functions/elementwise_unary.cpp
   lazy/record.cpp
   lazy/capture_mode.cpp
   tensor.cpp

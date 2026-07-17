@@ -17,6 +17,7 @@
 #include "lamp3/tensor/lazy/realize.hpp"
 #include "lamp3/tensor/lazy/record.hpp"
 #include "lamp3/tensor/lazy/functions/elementwise_binary.hpp"
+#include "lamp3/tensor/lazy/functions/elementwise_unary.hpp"
 
 #ifdef LMP_ENABLE_CUDA
 #include "lamp3/tensor/cuda/binary.cuh"
