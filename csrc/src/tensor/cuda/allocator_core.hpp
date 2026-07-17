@@ -65,8 +65,7 @@ class BlockArena {
   }
 
   void add_segment(Address address, std::size_t size) {
-    if (address == 0 || size == 0 ||
-        address % allocation_alignment_ != 0 ||
+    if (address == 0 || size == 0 || address % allocation_alignment_ != 0 ||
         size % allocation_alignment_ != 0) {
       throw std::invalid_argument("segment must be nonzero and aligned");
     }
@@ -181,8 +180,7 @@ class BlockArena {
       Segment* segment = iterator->second.get();
       Block* block = segment->first;
       if (!block->allocated && block->next == nullptr &&
-          block->address == segment->address &&
-          block->size == segment->size) {
+          block->address == segment->address && block->size == segment->size) {
         erase_free(block);
         released.push_back({segment->address, segment->size});
         destroy_block(block);

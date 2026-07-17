@@ -3,10 +3,9 @@
 #include <driver_types.h>
 #include <thrust/device_ptr.h>
 
-#include <cuda/std/array>
-
 #include <algorithm>
 #include <cstdint>
+#include <cuda/std/array>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -30,10 +29,10 @@ constexpr std::size_t kAllocationAlignment = 256;
 constexpr std::size_t kSegmentSize = 64ULL * 1024 * 1024;
 
 using allocator::Address;
+using allocator::align_up;
 using allocator::Allocation;
 using allocator::BlockArena;
 using allocator::ReleasedSegment;
-using allocator::align_up;
 
 [[noreturn]] void throw_cuda_error(const char* operation, cudaError_t error) {
   throw std::runtime_error(std::string(operation) + ": " +
@@ -46,13 +45,9 @@ void check_cuda(cudaError_t error, const char* operation) {
   }
 }
 
-Address to_address(void* pointer) {
-  return reinterpret_cast<Address>(pointer);
-}
+Address to_address(void* pointer) { return reinterpret_cast<Address>(pointer); }
 
-void* to_pointer(Address address) {
-  return reinterpret_cast<void*>(address);
-}
+void* to_pointer(Address address) { return reinterpret_cast<void*>(address); }
 
 struct DeviceState {
   DeviceState() : arena(kAllocationAlignment) {}
@@ -90,8 +85,7 @@ class CudaAllocator {
 
     const std::size_t aligned_request =
         align_up(byte_size, kAllocationAlignment);
-    const std::size_t segment_size =
-        std::max(kSegmentSize, aligned_request);
+    const std::size_t segment_size = std::max(kSegmentSize, aligned_request);
 
     void* segment_pointer = nullptr;
     cudaError_t error = cudaMalloc(&segment_pointer, segment_size);
@@ -100,10 +94,9 @@ class CudaAllocator {
       error = cudaMalloc(&segment_pointer, segment_size);
     }
     if (error != cudaSuccess) {
-      throw std::runtime_error(
-          "CUDA allocator could not acquire a " +
-          std::to_string(segment_size) + "-byte segment: " +
-          cudaGetErrorString(error));
+      throw std::runtime_error("CUDA allocator could not acquire a " +
+                               std::to_string(segment_size) +
+                               "-byte segment: " + cudaGetErrorString(error));
     }
 
     try {
@@ -111,8 +104,8 @@ class CudaAllocator {
     } catch (...) {
       const cudaError_t free_error = cudaFree(segment_pointer);
       if (free_error != cudaSuccess) {
-        throw_cuda_error(
-            "CUDA allocator failed to release a rejected segment", free_error);
+        throw_cuda_error("CUDA allocator failed to release a rejected segment",
+                         free_error);
       }
       throw;
     }
@@ -151,8 +144,7 @@ class CudaAllocator {
   }
 
   DeviceState& state_for(int device) {
-    if (device < 0 ||
-        static_cast<std::size_t>(device) >= states_.size()) {
+    if (device < 0 || static_cast<std::size_t>(device) >= states_.size()) {
       throw std::runtime_error("CUDA allocator received an invalid device");
     }
     return *states_[static_cast<std::size_t>(device)];
@@ -212,8 +204,7 @@ void addInplace(T* destination, const T* source, std::size_t size) {
   using V = vec4_t<T>;
   const bool vectorized = internal::is_aligned(destination, alignof(V)) &&
                           internal::is_aligned(source, alignof(V));
-  const std::size_t n_vec =
-      vectorized ? size / internal::kVecWidth : 0;
+  const std::size_t n_vec = vectorized ? size / internal::kVecWidth : 0;
   const std::size_t work_items = vectorized ? n_vec : size;
   addInplaceKernel<<<internal::elemwise_blocks(work_items),
                      internal::kElemwiseThreads>>>(destination, source, n_vec,
@@ -256,9 +247,9 @@ void resize_cuda(DataPtr dptr, std::size_t old_byte_size,
   // StorageImpl. Keeping the temporary in this allocator avoids mixing
   // cudaMallocAsync ownership with the allocator's deleter.
   DataPtr replacement = empty_cuda(new_byte_size);
-  LMP_CUDA_CHECK(cudaMemcpyAsync(
-      replacement.data(), dptr.data(), std::min(old_byte_size, new_byte_size),
-      cudaMemcpyDeviceToDevice));
+  LMP_CUDA_CHECK(cudaMemcpyAsync(replacement.data(), dptr.data(),
+                                 std::min(old_byte_size, new_byte_size),
+                                 cudaMemcpyDeviceToDevice));
   dptr = std::move(replacement);
 }
 
@@ -306,9 +297,9 @@ void copy_cuda(DeviceType to_device, const void* src, void* dest,
               static_cast<dest_type*>(temporary.data()));
           LMP_CUDA_INTERNAL_ASSERT(cudaGetLastError())
               << "copy_cuda to CPU: vecCopy kernel failed.";
-          LMP_CUDA_CHECK(cudaMemcpyAsync(
-              dest, temporary.data(), size * sizeof(dest_type),
-              cudaMemcpyDeviceToHost))
+          LMP_CUDA_CHECK(cudaMemcpyAsync(dest, temporary.data(),
+                                         size * sizeof(dest_type),
+                                         cudaMemcpyDeviceToHost))
               << "copy_cuda to CPU: cudaMemcpy DtoH failed.";
         });
       });
@@ -327,9 +318,9 @@ void copy_cuda(DeviceType to_device, const void* src, void* dest,
 
           LMP_CUDA_INTERNAL_ASSERT(cudaGetLastError())
               << "copy_cuda to CUDA: vecCopy kernel failed.";
-          LMP_CUDA_CHECK(cudaMemcpyAsync(
-              dest, temporary.data(), size * sizeof(dest_type),
-              cudaMemcpyDeviceToDevice))
+          LMP_CUDA_CHECK(cudaMemcpyAsync(dest, temporary.data(),
+                                         size * sizeof(dest_type),
+                                         cudaMemcpyDeviceToDevice))
               << "copy_cuda to CUDA: cudaMemcpy DtoD failed.";
         });
       });
@@ -371,10 +362,9 @@ void cudaVecFill(std::size_t size, T* out, T value) {
   cudaVecFillKernel<T><<<blocks, threads>>>(size, out, value);
 }
 
-#define INSTANTIATE_COPY(arg1_type, arg2_type)                              \
-  template void cudaVecCopy<arg1_type, arg2_type>(std::size_t,              \
-                                                  const arg1_type*,          \
-                                                  arg2_type*);
+#define INSTANTIATE_COPY(arg1_type, arg2_type)     \
+  template void cudaVecCopy<arg1_type, arg2_type>( \
+      std::size_t, const arg1_type*, arg2_type*);
 #define INSTANTIATE_FILL(arg1_type) \
   template void cudaVecFill<arg1_type>(std::size_t, arg1_type*, arg1_type);
 
