@@ -21,11 +21,10 @@ std::shared_ptr<TensorImpl> ElementwiseUnaryFn::infer_output() const {
                                       inputs[0]->type());
 }
 
-#define LMP_DEFINE_UNARY_RUN_EAGER(name, stub)                         \
-  void name##Fn::run_eager(TensorImpl& out) {                          \
-    TensorImpl result =                                                \
-        ops::stub##_stub()(inputs[0]->device(), *inputs[0]);           \
-    out.set_realized(result.storage());                                \
+#define LMP_DEFINE_UNARY_RUN_EAGER(name, stub)                               \
+  void name##Fn::run_eager(TensorImpl& out) {                                \
+    TensorImpl result = ops::stub##_stub()(inputs[0]->device(), *inputs[0]); \
+    out.set_realized(result.storage());                                      \
   }
 
 LMP_DEFINE_UNARY_RUN_EAGER(Neg, neg)
@@ -49,8 +48,8 @@ std::string ClampFn::codegen_expr() const {
   const std::string min = scalar_literal(min_val_);
   const std::string max = scalar_literal(max_val_);
   std::ostringstream os;
-  os << "(({0}) < (" << min << ") ? (" << min << ") : "
-     << "(({0}) > (" << max << ") ? (" << max << ") : ({0})))";
+  os << "(({0}) < (" << min << ") ? (" << min << ") : " << "(({0}) > (" << max
+     << ") ? (" << max << ") : ({0})))";
   return os.str();
 }
 
