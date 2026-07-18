@@ -1,5 +1,3 @@
-#include "allocator.cuh"
-
 #include <cuda_runtime.h>
 
 #include <algorithm>
@@ -9,6 +7,7 @@
 #include <optional>
 #include <vector>
 
+#include "allocator.cuh"
 #include "allocator_core.hpp"
 #include "lamp3/common/assert.hpp"
 
