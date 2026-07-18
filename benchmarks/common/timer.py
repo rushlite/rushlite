@@ -8,8 +8,11 @@ Algorithm mirrors pytorch's BenchmarkRunner._measure_metrics:
   - report MEDIAN across rounds; repeat num_runs times
 """
 
+import math
 import statistics
+from dataclasses import dataclass
 from time import perf_counter
+from typing import Callable
 
 
 def measure(
@@ -75,3 +78,78 @@ def measure(
         results.append(statistics.median(time_trace))
 
     return results
+
+
+@dataclass(frozen=True)
+class Measurement:
+    """Fixed-sample timing result: per-iteration latencies in microseconds."""
+
+    iterations_per_sample: int
+    samples_us: tuple[float, ...]
+
+    @property
+    def median_us(self) -> float:
+        return statistics.median(self.samples_us)
+
+    @property
+    def min_us(self) -> float:
+        return min(self.samples_us)
+
+
+def measure_samples(
+    run_once: Callable[[], None],
+    synchronize: Callable[[], None],
+    *,
+    warmup: int,
+    samples: int,
+    iterations: int | None = None,
+    min_sample_secs: float = 0.05,
+) -> Measurement:
+    """Time run_once with a fixed number of samples and iterations per sample.
+
+    Unlike measure(), the iteration count never changes between samples: it is
+    calibrated once (unless supplied) and every sample runs exactly that many
+    iterations, so samples are comparable to each other.
+
+    Steps:
+      1. synchronize, run warmup iterations, synchronize;
+      2. calibrate iterations per sample once (skipped when iterations given);
+      3. for each sample: synchronize, time `iterations` calls to run_once,
+         synchronize, record us per iteration.
+
+    run_once must enqueue one fresh unit of work and must not synchronize or
+    transfer results itself; device completion is owned by `synchronize`.
+    """
+    if warmup < 0:
+        raise ValueError("warmup must be >= 0")
+    if samples < 1:
+        raise ValueError("samples must be >= 1")
+    if iterations is not None and iterations < 1:
+        raise ValueError("iterations must be >= 1 when supplied")
+
+    synchronize()
+    for _ in range(warmup):
+        run_once()
+    synchronize()
+
+    if iterations is None:
+        t0 = perf_counter()
+        run_once()
+        synchronize()
+        once = perf_counter() - t0
+        if once >= min_sample_secs:
+            iterations = 1
+        else:
+            iterations = math.ceil(min_sample_secs / max(once, 1e-9))
+
+    samples_us: list[float] = []
+    for _ in range(samples):
+        synchronize()
+        t0 = perf_counter()
+        for _ in range(iterations):
+            run_once()
+        synchronize()
+        dt = perf_counter() - t0
+        samples_us.append(1e6 * dt / iterations)
+
+    return Measurement(iterations_per_sample=iterations, samples_us=tuple(samples_us))
