@@ -41,6 +41,7 @@ if (LMP_ENABLE_CUDA)
     cuda/expand.cu
     cuda/kernels.cu
     cuda/memory.cu
+    cuda/allocator.cu
   )
 endif()
 

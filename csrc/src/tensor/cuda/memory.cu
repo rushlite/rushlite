@@ -6,14 +6,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <cuda/std/array>
-#include <memory>
-#include <mutex>
-#include <stdexcept>
-#include <string>
 #include <utility>
-#include <vector>
 
-#include "allocator_core.hpp"
+#include "allocator.cuh"
 #include "lamp3/common/assert.hpp"
 #include "lamp3/common/macros.hpp"
 #include "lamp3/tensor/cuda/memory.cuh"
@@ -23,159 +18,6 @@
 #include "lamp3/tensor/native/memory_ops.hpp"
 
 namespace lmp::tensor::detail::cuda {
-namespace {
-
-constexpr std::size_t kAllocationAlignment = 256;
-constexpr std::size_t kSegmentSize = 64ULL * 1024 * 1024;
-
-using allocator::Address;
-using allocator::align_up;
-using allocator::Allocation;
-using allocator::BlockArena;
-using allocator::ReleasedSegment;
-
-[[noreturn]] void throw_cuda_error(const char* operation, cudaError_t error) {
-  throw std::runtime_error(std::string(operation) + ": " +
-                           cudaGetErrorString(error));
-}
-
-void check_cuda(cudaError_t error, const char* operation) {
-  if (error != cudaSuccess) {
-    throw_cuda_error(operation, error);
-  }
-}
-
-Address to_address(void* pointer) { return reinterpret_cast<Address>(pointer); }
-
-void* to_pointer(Address address) { return reinterpret_cast<void*>(address); }
-
-struct DeviceState {
-  DeviceState() : arena(kAllocationAlignment) {}
-
-  std::mutex mutex;
-  BlockArena arena;
-};
-
-struct DeviceAllocation {
-  void* pointer = nullptr;
-  int device = 0;
-};
-
-class CudaAllocator {
- public:
-  static CudaAllocator& instance() {
-    static CudaAllocator* allocator = new CudaAllocator();
-    return *allocator;
-  }
-
-  DeviceAllocation allocate(std::size_t byte_size) {
-    if (byte_size == 0) {
-      return {};
-    }
-
-    int device = 0;
-    check_cuda(cudaGetDevice(&device),
-               "CUDA allocator could not get the current device");
-    DeviceState& state = state_for(device);
-    std::lock_guard<std::mutex> lock(state.mutex);
-
-    if (auto allocation = state.arena.allocate(byte_size)) {
-      return {to_pointer(allocation->address), device};
-    }
-
-    const std::size_t aligned_request =
-        align_up(byte_size, kAllocationAlignment);
-    const std::size_t segment_size = std::max(kSegmentSize, aligned_request);
-
-    void* segment_pointer = nullptr;
-    cudaError_t error = cudaMalloc(&segment_pointer, segment_size);
-    if (error == cudaErrorMemoryAllocation) {
-      release_free_segments_locked(state);
-      error = cudaMalloc(&segment_pointer, segment_size);
-    }
-    if (error != cudaSuccess) {
-      throw std::runtime_error("CUDA allocator could not acquire a " +
-                               std::to_string(segment_size) +
-                               "-byte segment: " + cudaGetErrorString(error));
-    }
-
-    try {
-      state.arena.add_segment(to_address(segment_pointer), segment_size);
-    } catch (...) {
-      const cudaError_t free_error = cudaFree(segment_pointer);
-      if (free_error != cudaSuccess) {
-        throw_cuda_error("CUDA allocator failed to release a rejected segment",
-                         free_error);
-      }
-      throw;
-    }
-
-    const std::optional<Allocation> allocation =
-        state.arena.allocate(byte_size);
-    if (!allocation) {
-      throw std::logic_error(
-          "CUDA allocator could not use the segment it just acquired");
-    }
-    return {to_pointer(allocation->address), device};
-  }
-
-  void deallocate(void* pointer, int device) {
-    if (pointer == nullptr) {
-      return;
-    }
-
-    DeviceState& state = state_for(device);
-    std::lock_guard<std::mutex> lock(state.mutex);
-    if (!state.arena.deallocate(to_address(pointer))) {
-      throw std::runtime_error(
-          "CUDA allocator received an unknown address for deallocation");
-    }
-  }
-
- private:
-  CudaAllocator() {
-    int device_count = 0;
-    check_cuda(cudaGetDeviceCount(&device_count),
-               "CUDA allocator could not get the device count");
-    states_.reserve(static_cast<std::size_t>(device_count));
-    for (int device = 0; device < device_count; ++device) {
-      states_.push_back(std::make_unique<DeviceState>());
-    }
-  }
-
-  DeviceState& state_for(int device) {
-    if (device < 0 || static_cast<std::size_t>(device) >= states_.size()) {
-      throw std::runtime_error("CUDA allocator received an invalid device");
-    }
-    return *states_[static_cast<std::size_t>(device)];
-  }
-
-  void release_free_segments_locked(DeviceState& state) {
-    check_cuda(cudaDeviceSynchronize(),
-               "CUDA allocator could not synchronize before OOM recovery");
-
-    std::vector<ReleasedSegment> segments =
-        state.arena.extract_fully_free_segments();
-    for (std::size_t index = 0; index < segments.size(); ++index) {
-      const cudaError_t error = cudaFree(to_pointer(segments[index].address));
-      if (error == cudaSuccess) {
-        continue;
-      }
-
-      for (std::size_t restore = index; restore < segments.size(); ++restore) {
-        state.arena.add_segment(segments[restore].address,
-                                segments[restore].size);
-      }
-      throw_cuda_error(
-          "CUDA allocator could not release a segment during OOM recovery",
-          error);
-    }
-  }
-
-  std::vector<std::unique_ptr<DeviceState>> states_;
-};
-
-}  // namespace
 
 template <typename T>
 __global__ void addInplaceKernel(T* destination, const T* source,
@@ -216,10 +58,9 @@ DataPtr empty_cuda(std::size_t byte_size) {
     return {};
   }
 
-  const DeviceAllocation allocation =
-      CudaAllocator::instance().allocate(byte_size);
+  const DeviceAllocation allocation = cuda_pool_allocate(byte_size);
   return DataPtr(allocation.pointer, [device = allocation.device](void* ptr) {
-    CudaAllocator::instance().deallocate(ptr, device);
+    cuda_pool_deallocate(ptr, device);
   });
 }
 

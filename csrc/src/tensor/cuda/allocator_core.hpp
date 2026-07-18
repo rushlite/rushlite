@@ -2,14 +2,13 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <iterator>
-#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <unordered_map>
 #include <vector>
+
+#include "lamp3/common/assert.hpp"
 
 namespace lmp::tensor::detail::cuda::allocator {
 
@@ -26,12 +25,8 @@ struct ReleasedSegment {
 };
 
 inline std::size_t align_up(std::size_t value, std::size_t alignment) {
-  if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
-    throw std::invalid_argument("alignment must be a power of two");
-  }
-  if (value > std::numeric_limits<std::size_t>::max() - (alignment - 1)) {
-    throw std::overflow_error("allocation size overflow");
-  }
+  LMP_INTERNAL_ASSERT(alignment != 0 && (alignment & (alignment - 1)) == 0)
+      << "alignment must be a power of two";
   return (value + alignment - 1) & ~(alignment - 1);
 }
 
@@ -60,29 +55,13 @@ class BlockArena {
 
  public:
   explicit BlockArena(std::size_t allocation_alignment)
-      : allocation_alignment_(allocation_alignment) {
-    (void)align_up(0, allocation_alignment_);
-  }
+      : allocation_alignment_(allocation_alignment) {}
 
   void add_segment(Address address, std::size_t size) {
-    if (address == 0 || size == 0 || address % allocation_alignment_ != 0 ||
-        size % allocation_alignment_ != 0) {
-      throw std::invalid_argument("segment must be nonzero and aligned");
-    }
-    if (address > std::numeric_limits<Address>::max() - size) {
-      throw std::overflow_error("segment address overflow");
-    }
-
-    auto next = segments_.lower_bound(address);
-    if (next != segments_.end() && address + size > next->second->address) {
-      throw std::invalid_argument("segment overlaps its successor");
-    }
-    if (next != segments_.begin()) {
-      const auto& previous = std::prev(next)->second;
-      if (previous->address + previous->size > address) {
-        throw std::invalid_argument("segment overlaps its predecessor");
-      }
-    }
+    LMP_INTERNAL_ASSERT(address != 0 && size != 0 &&
+                        address % allocation_alignment_ == 0 &&
+                        size % allocation_alignment_ == 0)
+        << "segment must be nonzero and aligned";
 
     auto segment = std::make_unique<Segment>();
     segment->address = address;
@@ -201,24 +180,21 @@ class BlockArena {
   }
 
   void destroy_block(Block* block) {
-    if (block->allocated || block->indexed) {
-      throw std::logic_error("destroying a live block");
-    }
+    LMP_INTERNAL_ASSERT(!block->allocated && !block->indexed)
+        << "destroying a live block";
     nodes_.erase(block);
   }
 
   void insert_free(Block* block) {
-    if (block->allocated || block->indexed) {
-      throw std::logic_error("invalid free-index insertion");
-    }
+    LMP_INTERNAL_ASSERT(!block->allocated && !block->indexed)
+        << "invalid free-index insertion";
     block->free_position = free_index_.emplace(block->size, block);
     block->indexed = true;
   }
 
   void erase_free(Block* block) {
-    if (block->allocated || !block->indexed) {
-      throw std::logic_error("invalid free-index removal");
-    }
+    LMP_INTERNAL_ASSERT(!block->allocated && block->indexed)
+        << "invalid free-index removal";
     free_index_.erase(block->free_position);
     block->indexed = false;
   }
