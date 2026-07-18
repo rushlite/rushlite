@@ -41,6 +41,7 @@ if (LMP_ENABLE_CUDA)
     cuda/expand.cu
     cuda/kernels.cu
     cuda/memory.cu
+    cuda/allocator.cu
   )
 endif()
 
@@ -58,6 +59,9 @@ if (LMP_ENABLE_CUDA)
   set_target_properties(tensor_core PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON 
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
+  )
+  target_compile_options(tensor_core PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--default-stream=legacy>
   )
   target_link_libraries(tensor_core
     PUBLIC CUDA::cudart
