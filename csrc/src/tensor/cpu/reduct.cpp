@@ -1,31 +1,47 @@
 #include "lamp3/tensor/cpu/reduct.hpp"
 
-#include "lamp3/tensor/utils/align_utils.hpp"
-
 namespace lmp::tensor::detail::cpu {
 
 template <typename PtrList, typename OpFn>
-void vectorized_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i, size_t axis,
-                              const size_t* shape, const stride_t* strides) {
-  stride_t outer = strides[axis];
-  // == strides[axis - 1] for contiguous tensors, but defined at axis == 0.
-  stride_t inner = outer * static_cast<stride_t>(shape[axis]);
+void contiguous_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                              size_t reduced_size, stride_t outer) {
+  const stride_t inner = outer * static_cast<stride_t>(reduced_size);
   stride_t idx = ((i / outer) * inner) + (i % outer);
 
   auto incr = OpFn::kIdentity;
-  for (size_t j = 0; j < shape[axis]; ++j) {
+  for (size_t j = 0; j < reduced_size; ++j) {
     incr = fn_(incr, ::std::get<1>(ptr_.fns)(ptr_.data[1], idx + (j * outer)));
   }
   ptr_.set_Out(i, incr);
 }
 
 template <typename PtrList, typename OpFn>
-void reduct_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size, size_t axis,
-                            const size_t* shape, const stride_t* strides,
-                            size_t /*ndims*/) {
+void strided_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                           size_t reduced_size, stride_t reduced_stride,
+                           const CPUOffsetUtil<1>* offset) {
+  const stride_t input_base = offset->get(i)[0];
+  auto incr = OpFn::kIdentity;
+  for (size_t j = 0; j < reduced_size; ++j) {
+    incr = fn_(incr,
+               ::std::get<1>(ptr_.fns)(
+                   ptr_.data[1],
+                   input_base + (static_cast<stride_t>(j) * reduced_stride)));
+  }
+  ptr_.set_Out(i, incr);
+}
+
+template <typename PtrList, typename OpFn>
+void reduct_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                            size_t reduced_size, stride_t reduced_stride,
+                            const CPUOffsetUtil<1>* offset) {
 #pragma omp parallel for simd
   for (size_t i = 0; i < size; i++) {
-    vectorized_reduct_kernel(ptr_, fn_, i, axis, shape, strides);
+    if (offset == nullptr) {
+      contiguous_reduct_kernel(ptr_, fn_, i, reduced_size, reduced_stride);
+    } else {
+      strided_reduct_kernel(ptr_, fn_, i, reduced_size, reduced_stride,
+                           offset);
+    }
   }
 }
 
@@ -42,8 +58,11 @@ void reduct_dispatch_handler(ReductMetaHandler& meta, size_t axis,
               static_cast<arg_dtype_t*>(
                   const_cast<TensorImpl*>(meta.in()[0])->data())),
           OpFunctor<out_dtype_t>(std::forward<Args>(args)...),
-          meta.out().numel(), axis, meta.in()[0]->shape().data(),
-          meta.in()[0]->strides().data(), meta.out().shape().size());
+          meta.out().numel(), meta.in()[0]->shape()[axis],
+          meta.in()[0]->strides()[axis],
+          meta.has_offset()
+              ? static_cast<const CPUOffsetUtil<1>*>(meta.offset())
+              : nullptr);
     });
   });
 }

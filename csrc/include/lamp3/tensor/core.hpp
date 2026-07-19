@@ -22,7 +22,6 @@
 
 #ifdef LMP_ENABLE_CUDA
 #include "lamp3/tensor/cuda/binary.cuh"
-#include "lamp3/tensor/cuda/expand.cuh"
 #include "lamp3/tensor/cuda/kernels.cuh"
 #include "lamp3/tensor/cuda/list_ptr.cuh"
 #include "lamp3/tensor/cuda/matrix.cuh"

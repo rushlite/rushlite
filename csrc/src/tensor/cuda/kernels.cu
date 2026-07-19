@@ -1,29 +1,25 @@
 #include "lamp3/common/macros.hpp"
 #include "lamp3/tensor/cpu/meta_handler.hpp"
 #include "lamp3/tensor/cuda/binary.cuh"
-#include "lamp3/tensor/cuda/expand.cuh"
 #include "lamp3/tensor/cuda/kernels.cuh"
 #include "lamp3/tensor/cuda/matrix.cuh"
 #include "lamp3/tensor/cuda/reduct.cuh"
 #include "lamp3/tensor/cuda/unary.cuh"
+#include "lamp3/tensor/infer_meta.hpp"
 #include "lamp3/tensor/tensor_impl.hpp"
 
 namespace lmp::tensor::detail::cuda {
 
-#define DECLARE_EXPAND_OPS_CUDA(args) DECLARE_EXPAND_OPS_CUDA_HELPER args
-#define DECLARE_EXPAND_OPS_CUDA_HELPER(op, functor)                \
+#define DECLARE_BINARY_OPS_CUDA(args) DECLARE_BINARY_OPS_CUDA_HELPER args
+#define DECLARE_BINARY_OPS_CUDA_HELPER(op, functor)                \
   TensorImpl op##_cuda(const TensorImpl& a, const TensorImpl& b) { \
     TensorMetaHandler meta(&a, &b);                                \
-    if (meta.expand()) {                                           \
-      expand_dispatch_handler<functor>(meta);                      \
-    } else {                                                       \
-      binary_dispatch_handler<functor>(meta);                      \
-    }                                                              \
+    binary_dispatch_handler<functor>(meta);                        \
     return meta.out();                                             \
   }
 
 LMP_FOR_EACH_CARTESIAN_PRODUCT(
-    DECLARE_EXPAND_OPS_CUDA,
+    DECLARE_BINARY_OPS_CUDA,
     ((add, AddFunctor), (sub, SubFunctor), (mul, MulFunctor), (div, DivFunctor),
      (pow, PowFunctor), (eq, EqFunctor), (ne, NeFunctor), (le, LeFunctor),
      (lt, LtFunctor), (ge, GeFunctor), (gt, GtFunctor), ));
@@ -81,29 +77,31 @@ TensorImpl transpose_cuda(const TensorImpl& a) {
 }
 
 TensorImpl matmul_cuda(const TensorImpl& a, const TensorImpl& b) {
-  LMP_CHECK(a.shape().size() == 2 && b.shape().size() == 2)
-      << "Both matrices must be 2D.";
-  LMP_CHECK(a.shape()[1] == b.shape()[0])
-      << "Incompatible matrix dimensions for multiplication.";
-
-  size_t m = a.shape()[0];
-  size_t n = b.shape()[1];
-  size_t k = a.shape()[1];
-
-  DataType out_dtype = type_upcast(a.type(), b.type());
+  const MatmulMeta meta = infer_matmul(&a, &b);
+  std::unique_ptr<OffsetUtil> offset = offset_util_stub_2()(
+      DeviceType::CUDA, meta.batch_shape,
+      std::array<OperandLayout, 2>{leading_operand_layout(a),
+                                   leading_operand_layout(b)});
+  const OffsetCalculator<2> batch_offsets =
+      static_cast<const CUDAOffsetUtil<2>*>(offset.get())->calculator();
+  const size_t a_rank = a.shape().size();
+  const size_t b_rank = b.shape().size();
 
   return LMP_DISPATCH_ALL_TYPES(a.type(), [&] {
     using a_type_t = scalar_t;
     return LMP_DISPATCH_ALL_TYPES(b.type(), [&] {
       using b_type_t = scalar_t;
-      return LMP_DISPATCH_ALL_TYPES(out_dtype, [&] {
+      return LMP_DISPATCH_ALL_TYPES(meta.dtype, [&] {
         using out_type_t = scalar_t;
-        Storage c_storage(m * n * sizeof(out_type_t), DeviceType::CUDA);
+        Storage c_storage(meta.size * sizeof(out_type_t), DeviceType::CUDA);
         ::lmp::tensor::detail::cuda::cudaMatMul<a_type_t, b_type_t, out_type_t>(
             static_cast<const a_type_t*>(const_cast<TensorImpl&>(a).data()),
             static_cast<const b_type_t*>(const_cast<TensorImpl&>(b).data()),
-            static_cast<out_type_t*>(c_storage.data()), m, n, k);
-        return TensorImpl(c_storage, {m, n}, out_dtype);
+            static_cast<out_type_t*>(c_storage.data()), meta.m, meta.n, meta.k,
+            meta.batch_count, a.strides()[a_rank - 2],
+            a.strides()[a_rank - 1], b.strides()[b_rank - 2],
+            b.strides()[b_rank - 1], batch_offsets);
+        return TensorImpl(c_storage, meta.shape, meta.dtype);
       });
     });
   });

@@ -23,7 +23,7 @@ LMP_DEFINE_DISPATCH(clamp_backward_fn, clamp_backward_stub);
 #define LMP_DEFINE_UNARY_OP(name, lazy_fn)                                     \
   Tensor name(const Tensor& a) {                                               \
     std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a); \
-    if (lazy::should_capture(a.device())) {                                    \
+    if (lazy::should_capture(a.device()) && ai->is_contiguous()) {             \
       return detail::UnsafeTensorAccessor::fromImpl(                           \
           lazy::record(std::make_shared<lazy::lazy_fn>(                        \
               std::vector<std::shared_ptr<TensorImpl>>{ai})));                 \
@@ -45,7 +45,7 @@ LMP_DEFINE_UNARY_OP(tan, TanFn)
 
 Tensor clamp(const Tensor& a, Scalar min_val, Scalar max_val) {
   std::shared_ptr<TensorImpl> ai = detail::UnsafeTensorAccessor::getImpl(a);
-  if (lazy::should_capture(a.device())) {
+  if (lazy::should_capture(a.device()) && ai->is_contiguous()) {
     return detail::UnsafeTensorAccessor::fromImpl(
         lazy::record(std::make_shared<lazy::ClampFn>(
             std::vector<std::shared_ptr<TensorImpl>>{ai}, min_val, max_val)));

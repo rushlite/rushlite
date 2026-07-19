@@ -6,6 +6,7 @@
 #include <cuda/std/array>
 #include "lamp3/tensor/cpu/meta_handler.hpp"
 #include "lamp3/tensor/cuda/kernels.cuh"
+#include "lamp3/tensor/cuda/offset_util.cuh"
 #include "lamp3/tensor/cuda/ptr_pack.cuh"
 #include "lamp3/tensor/tensor_impl.hpp"
 
@@ -18,6 +19,14 @@ __global__ void vectorized_unary_kernel(PtrList ptr_, OpFn fn_, size_t size);
 template <typename PtrList, typename OpFn>
 void unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size);
 
+template <typename PtrList, typename OpFn>
+__global__ void strided_unary_kernel(PtrList ptr_, OpFn fn_, size_t size,
+                                     OffsetCalculator<1> offset);
+
+template <typename PtrList, typename OpFn>
+void strided_unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                                   OffsetCalculator<1> offset);
+
 template <template <typename> class OpFunctor, typename... Args>
 void unary_dispatch_handler(UnaryMetaHandler& meta, Args&&... args);
 
@@ -29,8 +38,8 @@ extern template void unary_dispatch_handler<AbsFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<SinFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<CosFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<TanFunctor>(UnaryMetaHandler&);
-extern template void unary_dispatch_handler<ClampFunctor>(UnaryMetaHandler&, Scalar&,
-                                                   Scalar&);
+extern template void unary_dispatch_handler<ClampFunctor>(
+    UnaryMetaHandler&, Scalar&, Scalar&);
 /// @endinternal
 
 }  // namespace lmp::tensor::detail::cuda

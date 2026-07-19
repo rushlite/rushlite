@@ -12,10 +12,12 @@ constexpr size_t kNArgs = BinaryMetaHandler::kNumElem;
 
 /// @internal
 template <typename PtrList, typename OpFn>
-void vectorized_binary_kernel(PtrList ptr_, OpFn fn_, size_t i);
+void binary_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                   const CPUOffsetUtil<kNArgs>* offset);
 
 template <typename PtrList, typename OpFn>
-void binary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size);
+void binary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                            const CPUOffsetUtil<kNArgs>* offset);
 /// @endinternal
 
 /// @internal

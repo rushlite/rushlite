@@ -11,7 +11,6 @@ set(TENSOR_SOURCES
   cpu/offset_util.cpp
   cpu/unary.cpp
   cpu/binary.cpp
-  cpu/expand.cpp
   cpu/reduct.cpp
   cpu/matrix.cpp
   cpu/kernels.cpp
@@ -38,7 +37,6 @@ if (LMP_ENABLE_CUDA)
     cuda/unary.cu
     cuda/binary.cu
     cuda/reduct.cu
-    cuda/expand.cu
     cuda/kernels.cu
     cuda/memory.cu
     cuda/allocator.cu
