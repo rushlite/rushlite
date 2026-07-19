@@ -33,6 +33,9 @@ OpMeta infer_binary(const TensorImpl* a, const TensorImpl* b) {
 }
 
 OpMeta infer_reduct(const TensorImpl* a, size_t axis) {
+  LMP_CHECK(axis < a->shape().size())
+      << "Reduction axis " << axis << " out of range for rank "
+      << a->shape().size();
   OpMeta m;
   m.dtype = a->type();
   m.size = a->numel();

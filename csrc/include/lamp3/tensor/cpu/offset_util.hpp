@@ -1,54 +1,48 @@
 #pragma once
 
 #include <array>
-#include <vector>
-#include "lamp3/tensor/utils/align_utils.hpp"
-#include "lamp3/tensor/tensor_impl.hpp"
+#include <memory>
+
+#include "lamp3/tensor/dispatch_stub.hpp"
+#include "lamp3/tensor/offset_util.hpp"
 
 namespace lmp::tensor::detail {
-
-/// @internal
-/**
- * @brief Offset utility for CPU
- * @details this class is used to get the offset of the elements in the tensor.
- */
-class OffsetUtil {
- public:
-  explicit OffsetUtil(size_t ndim) : ndim(ndim) {};
-  size_t ndim;
-
- protected:
-  std::vector<stride_t> init_padded_strides(
-      const std::vector<size_t>& shape, const std::vector<stride_t>& stride) const;
-};
-/// @endinternal
 
 namespace cpu {
 
 /// @internal
 template <size_t NArgs>
-class CPUOffsetUtil : public OffsetUtil {
+class CPUOffsetUtil final : public OffsetUtil {
  public:
-  explicit CPUOffsetUtil(::std::array<const TensorImpl*, NArgs> ins,
-                         const TensorImpl& outs);
-  ::std::array<stride_t, NArgs + 1> get(size_t idx) const;
+  CPUOffsetUtil(const shape_list& iteration_shape,
+                const std::array<OperandLayout, NArgs>& operands)
+      : OffsetUtil(NArgs),
+        calculator_(make_offset_calculator(iteration_shape, operands)) {}
 
-  ::std::array<std::vector<stride_t>, NArgs + 1> arg_strides_;
+  offsets_t<NArgs> get(size_t logical_index) const noexcept {
+    return calculator_.get(logical_index);
+  }
+
+  const OffsetCalculator<NArgs>& calculator() const noexcept {
+    return calculator_;
+  }
+
+ private:
+  const OffsetCalculator<NArgs> calculator_;
 };
 /// @endinternal
 
 template <size_t NArgs>
-std::unique_ptr<OffsetUtil> offset_util_cpu(::std::array<const TensorImpl*, NArgs> ins, 
-    const TensorImpl& out) {
-  return std::make_unique<cpu::CPUOffsetUtil<NArgs>>(ins, out);
+std::unique_ptr<OffsetUtil> offset_util_cpu(
+    const shape_list& iteration_shape,
+    const std::array<OperandLayout, NArgs>& operands) {
+  return std::make_unique<CPUOffsetUtil<NArgs>>(iteration_shape, operands);
 }
 
 }  // namespace cpu
 
-template <size_t NArgs>
-using offset_util_fn = std::unique_ptr<OffsetUtil> (*)(::std::array<const TensorImpl*, NArgs>, const TensorImpl&);
-
+LMP_DECLARE_DISPATCH(offset_util_fn<1>, offset_util_stub_1);
 LMP_DECLARE_DISPATCH(offset_util_fn<2>, offset_util_stub_2);
 LMP_DECLARE_DISPATCH(offset_util_fn<3>, offset_util_stub_3);
 
-};  // namespace lmp::tensor::detail
+}  // namespace lmp::tensor::detail

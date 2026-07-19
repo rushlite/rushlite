@@ -80,6 +80,7 @@ target_link_libraries(lamp3 INTERFACE autograd_core tensor_core inductor_core ne
 add_subdirectory(docs) # TODO: this includes some examples that we don't technically need to build
 add_subdirectory(csrc/bindings)
 if(LMP_ENABLE_TEST)
+  enable_testing()
   add_subdirectory(csrc/tests)
 endif()
 

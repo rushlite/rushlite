@@ -19,10 +19,12 @@ class TensorMetaHandler {
 
   TensorImpl& out() noexcept { return *outTen_; }
   tensor_list& in() noexcept { return inTens_; }
-  const OffsetUtil* offset() const noexcept {
-    LMP_INTERNAL_ASSERT(expand_) << "Must have expand = True to get offset";
+  const OffsetUtil* offset() const {
+    LMP_INTERNAL_ASSERT(outOffset_ != nullptr)
+        << "Offset utility was not constructed for this route";
     return outOffset_.get();
   }
+  bool has_offset() const noexcept { return outOffset_ != nullptr; }
   bool expand() const noexcept { return expand_; }
 
  private:

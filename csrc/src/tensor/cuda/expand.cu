@@ -2,34 +2,32 @@
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 
-#include <cuda/std/array>
 #include <cuda/std/tuple>
 
 #include "lamp3/tensor/cuda/expand.cuh"
 #include "lamp3/tensor/cuda/kernels.cuh"
-#include "lamp3/tensor/cuda/list_ptr.cuh"
 
 namespace lmp::tensor::detail::cuda {
 
 template <typename PtrList, typename OpFn>
 __global__ void vectorized_expand_kernel(PtrList ptr_, OpFn fn_, size_t size,
-                                         const CUDAOffsetUtil<kNArgs>* align) {
+                                         OffsetCalculator<kNArgs> align) {
   for (size_t i = (blockIdx.x * blockDim.x) + threadIdx.x; i < size;
        i += gridDim.x * blockDim.x) {  // grid stride loop trick
-    ::cuda::std::array offsets = align->get(i);
+    const offsets_t<kNArgs> offsets = align.get(i);
     ptr_.set_Out(i,
-                 fn_(::cuda::std::get<1>(ptr_.fns)(ptr_.data[1], offsets[1]),
-                     ::cuda::std::get<2>(ptr_.fns)(ptr_.data[2], offsets[2])));
+                 fn_(::cuda::std::get<1>(ptr_.fns)(ptr_.data[1], offsets[0]),
+                     ::cuda::std::get<2>(ptr_.fns)(ptr_.data[2], offsets[1])));
   }
 }
 
 template <typename PtrList, typename OpFn>
 void expand_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
-                            const CUDAOffsetUtil<kNArgs>* align) {
+                            OffsetCalculator<kNArgs> align) {
+  if (size == 0) return;
   size_t threads = 256;
   size_t blocks = std::min((size + threads - 1) / threads, 1024UL);
-  ListDevicePtr<CUDAOffsetUtil<kNArgs>> d_align(align, 1);
-  vectorized_expand_kernel<<<blocks, threads>>>(ptr_, fn_, size, d_align.get());
+  vectorized_expand_kernel<<<blocks, threads>>>(ptr_, fn_, size, align);
 
   LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
       << "expand_kernel_launcher: kernel failed.";
@@ -52,7 +50,8 @@ void expand_dispatch_handler(BinaryMetaHandler& meta, Args&&... args) {
                     const_cast<TensorImpl*>(meta.in()[1])->data())),
             OpFunctor<out_dtype_t>(std::forward<Args>(args)...),
             meta.out().numel(),
-            static_cast<const CUDAOffsetUtil<kNArgs>*>(meta.offset()));
+            static_cast<const CUDAOffsetUtil<kNArgs>*>(meta.offset())
+                ->calculator());
       });
     });
   });
