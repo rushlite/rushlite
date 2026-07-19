@@ -1,5 +1,7 @@
 #include "lamp3/tensor/tensor_impl.hpp"
 
+#include <algorithm>
+
 #include "lamp3/common/assert.hpp"
 #include "lamp3/tensor/data_type.hpp"
 #include "lamp3/tensor/device_type.hpp"
@@ -27,7 +29,7 @@ TensorImpl::TensorImpl(Storage storage, const std::vector<size_t>& shape,
         << data_.byte_size() << " bytes (capacity for "
         << (data_.byte_size() / sizeof(scalar_t)) << " elements)";
   });
-  update_strides();
+  set_contiguous_strides();
 }
 
 void* TensorImpl::data() {
@@ -41,6 +43,19 @@ const std::vector<detail::stride_t>& TensorImpl::strides() const noexcept {
   return strides_;
 }
 size_t TensorImpl::numel() const noexcept { return numel_; }
+
+bool TensorImpl::is_contiguous() const noexcept {
+  if (numel_ == 0) return true;
+
+  detail::stride_t expected_stride = 1;
+  for (size_t i = shape_.size(); i > 0; --i) {
+    const size_t dim = i - 1;
+    if (shape_[dim] == 1) continue;
+    if (strides_[dim] != expected_stride) return false;
+    expected_stride *= static_cast<detail::stride_t>(shape_[dim]);
+  }
+  return true;
+}
 
 bool TensorImpl::is_deferred() const noexcept { return lazy_ != nullptr; }
 
@@ -68,12 +83,13 @@ void TensorImpl::set_deferred(std::shared_ptr<lazy::LazyFunction> op) {
 
 Storage TensorImpl::storage() const noexcept { return data_; }
 
-void TensorImpl::update_strides() {
+void TensorImpl::set_contiguous_strides() {
   detail::stride_t stride = 1;
   strides_.resize(shape_.size());
-  for (int i = shape_.size() - 1; i >= 0; --i) {
-    strides_[i] = stride;
-    stride *= shape_[i];
+  for (size_t i = shape_.size(); i > 0; --i) {
+    const size_t dim = i - 1;
+    strides_[dim] = stride;
+    stride *= static_cast<detail::stride_t>(shape_[dim]);
   }
 }
 
@@ -84,26 +100,74 @@ TensorImpl TensorImpl::reshape(std::vector<size_t> new_shape) {
                                           std::multiplies<>());
   LMP_CHECK(new_size == numel_) << "Cannot reshape tensor: total number of "
                                    "elements must remain the same.";
+  LMP_CHECK(is_contiguous())
+      << "Cannot reshape a non-contiguous tensor without materializing it";
+  data();
   TensorImpl other(*this);
   other.shape_ = std::move(new_shape);
-  other.update_strides();
+  other.set_contiguous_strides();
+  return other;
+}
+
+TensorImpl TensorImpl::transpose(size_t dim0, size_t dim1) {
+  LMP_CHECK(dim0 < shape_.size())
+      << "Dimension " << dim0 << " out of range for transpose of rank "
+      << shape_.size();
+  LMP_CHECK(dim1 < shape_.size())
+      << "Dimension " << dim1 << " out of range for transpose of rank "
+      << shape_.size();
+
+  data();
+  TensorImpl other(*this);
+  std::swap(other.shape_[dim0], other.shape_[dim1]);
+  std::swap(other.strides_[dim0], other.strides_[dim1]);
+  return other;
+}
+
+TensorImpl TensorImpl::permute(const std::vector<size_t>& dims) {
+  LMP_CHECK(dims.size() == shape_.size())
+      << "Permutation must contain exactly " << shape_.size()
+      << " dimensions";
+
+  std::vector<bool> seen(shape_.size(), false);
+  for (size_t dim : dims) {
+    LMP_CHECK(dim < shape_.size())
+        << "Dimension " << dim << " out of range for permutation of rank "
+        << shape_.size();
+    LMP_CHECK(!seen[dim])
+        << "Dimension " << dim << " appears more than once in permutation";
+    seen[dim] = true;
+  }
+
+  data();
+  TensorImpl other(*this);
+  for (size_t i = 0; i < dims.size(); ++i) {
+    other.shape_[i] = shape_[dims[i]];
+    other.strides_[i] = strides_[dims[i]];
+  }
   return other;
 }
 
 TensorImpl TensorImpl::squeeze(size_t dim) {
   LMP_CHECK(dim < shape_.size()) << "Dimension out of range for squeeze";
   LMP_CHECK(shape_[dim] == 1) << "Cannot squeeze dimension that is not size 1";
+  data();
   TensorImpl other(*this);
   other.shape_.erase(other.shape_.begin() + dim);
-  other.update_strides();
+  other.strides_.erase(other.strides_.begin() + dim);
   return other;
 }
 
 TensorImpl TensorImpl::expand_dims(size_t dim) {
   LMP_CHECK(dim <= shape_.size()) << "Dimension out of range for expand_dims";
+  const detail::stride_t stride =
+      dim < shape_.size()
+          ? strides_[dim] * static_cast<detail::stride_t>(shape_[dim])
+          : 1;
+  data();
   TensorImpl other(*this);
   other.shape_.insert(other.shape_.begin() + dim, 1);
-  other.update_strides();
+  other.strides_.insert(other.strides_.begin() + dim, stride);
   return other;
 }
 
@@ -111,14 +175,17 @@ Scalar TensorImpl::index(const std::vector<size_t>& idx) {
   LMP_CHECK(idx.size() == shape_.size()) << "Indexing does not match shape";
   size_t at = 0;
   for (size_t i = 0; i < idx.size(); i++) {
-    at += strides_[i] * idx[i];
+    LMP_CHECK(idx[i] < shape_[i])
+        << "Index " << idx[i] << " out of bounds for dimension " << i
+        << " with size " << shape_[i];
+    at += static_cast<size_t>(strides_[i]) * idx[i];
   }
   return LMP_DISPATCH_ALL_TYPES(type(), [&]() {
-    auto* elem = new scalar_t[1];
+    scalar_t elem{};
     ops::copy_stub()(device(), DeviceType::CPU,
-                     static_cast<scalar_t*>(data()) + at, elem, 1, type(),
+                     static_cast<scalar_t*>(data()) + at, &elem, 1, type(),
                      type());
-    return static_cast<Scalar>(elem[0]);
+    return static_cast<Scalar>(elem);
   });
 }
 

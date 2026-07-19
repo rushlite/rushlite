@@ -14,6 +14,18 @@ namespace lmp::tensor::ops {
 Tensor reshape(const Tensor& a, std::vector<size_t> new_shape);
 
 /**
+ * @brief Swap two dimensions of a tensor
+ * @return A storage-sharing metadata view
+ */
+Tensor transpose(const Tensor& a, size_t dim0, size_t dim1);
+
+/**
+ * @brief Reorder all dimensions of a tensor
+ * @return A storage-sharing metadata view
+ */
+Tensor permute(const Tensor& a, const std::vector<size_t>& dims);
+
+/**
  * @brief Squeeze a tensor
  * @param a The tensor to squeeze
  * @param dim The dimension to squeeze

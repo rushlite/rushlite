@@ -28,6 +28,11 @@ target_link_libraries(tensor_tests
   PRIVATE tensor_core GTest::gtest_main GTest::gmock
 )
 
+add_executable(tensor_layout_tests tensor_layout_tests.cpp)
+target_link_libraries(tensor_layout_tests
+  PRIVATE tensor_core GTest::gtest_main GTest::gmock
+)
+
 add_executable(playground playground.cpp)
 target_link_libraries(playground
   PRIVATE autograd_core tensor_core nets_core
@@ -38,8 +43,11 @@ if(LMP_ENABLE_COVERAGE)
   target_link_options(tensor_tests PRIVATE --coverage)
   target_compile_options(autograd_tests PRIVATE --coverage -O0 -g)
   target_link_options(autograd_tests PRIVATE --coverage)
+  target_compile_options(tensor_layout_tests PRIVATE --coverage -O0 -g)
+  target_link_options(tensor_layout_tests PRIVATE --coverage)
 endif()
 
 include(GoogleTest)
 gtest_discover_tests(tensor_tests PROPERTIES LABELS "library_tests")
 gtest_discover_tests(autograd_tests PROPERTIES LABELS "library_tests")
+gtest_discover_tests(tensor_layout_tests PROPERTIES LABELS "library_tests")

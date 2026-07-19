@@ -17,9 +17,18 @@ const std::vector<detail::stride_t>& Tensor::strides() const noexcept {
   return impl_->strides();
 }
 size_t Tensor::numel() const noexcept { return impl_->numel(); }
+bool Tensor::is_contiguous() const noexcept { return impl_->is_contiguous(); }
 
 Tensor Tensor::reshape(std::vector<size_t> new_shape) const {
   return ops::reshape(*this, std::move(new_shape));
+}
+
+Tensor Tensor::transpose(size_t dim0, size_t dim1) const {
+  return ops::transpose(*this, dim0, dim1);
+}
+
+Tensor Tensor::permute(const std::vector<size_t>& dims) const {
+  return ops::permute(*this, dims);
 }
 
 Tensor Tensor::squeeze(size_t dim) const { return ops::squeeze(*this, dim); }

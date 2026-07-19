@@ -49,6 +49,7 @@ class Tensor {
   const std::vector<size_t>& shape() const noexcept;
   const std::vector<detail::stride_t>& strides() const noexcept;
   size_t numel() const noexcept;
+  bool is_contiguous() const noexcept;
 
   /// @note These functions return an object representing the underlying data
   template <typename T>
@@ -73,6 +74,8 @@ class Tensor {
   * i.e. don't change the underlying storage @see storage.hpp
   */
   Tensor reshape(std::vector<size_t> new_shape) const;
+  Tensor transpose(size_t dim0, size_t dim1) const;
+  Tensor permute(const std::vector<size_t>& dims) const;
   Tensor squeeze(size_t dim) const;
   Tensor expand_dims(size_t dim) const;
 
