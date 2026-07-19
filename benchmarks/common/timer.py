@@ -23,6 +23,7 @@ def measure(
     max_iters: float = 1e6,
     multiplier: int = 2,
     num_runs: int = 1,
+    fixed: bool = False,
 ) -> list[float]:
     """Run run_batch adaptively and return per-iteration time in microseconds.
 
@@ -36,6 +37,7 @@ def measure(
         max_iters: hard cap on iters before forcing exit.
         multiplier: factor by which iters grows each round.
         num_runs: how many independent runs to perform; returns list of medians.
+        fixed: measure exactly iters once per run instead of adapting.
 
     Returns:
         List of length num_runs, each entry is the median us/iter across rounds.
@@ -63,9 +65,10 @@ def measure(
             time_trace.append(us_per_iter)
             cumulative_time += dt
 
-            significant = (
-                dt > min_secs or cur_iters > max_iters
-            ) and cumulative_time > min_time_per_test
+            significant = fixed or (
+                (dt > min_secs or cur_iters > max_iters)
+                and cumulative_time > min_time_per_test
+            )
 
             if significant:
                 break

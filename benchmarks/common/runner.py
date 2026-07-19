@@ -27,6 +27,7 @@ class RunConfig:
 
     tag: str = "short"  # "short" | "long" | "all"
     devices: list[str] | None = None  # None = all
+    ops: list[str] | None = None  # None = all catalogued ops
     backends: list[str] | None = None  # None = all registered
     warmup: int = 100
     min_time_per_test: float = 1.0
@@ -97,6 +98,8 @@ def run_all(cfg: RunConfig) -> None:
             active_backends[name] = BACKENDS[name]
 
     for entry in CATALOG:
+        if cfg.ops is not None and entry.name not in cfg.ops:
+            continue
         cases = resolve_cases(entry)
         for backend in active_backends.values():
             if entry.name not in backend.ops:
@@ -117,7 +120,8 @@ def run_all(cfg: RunConfig) -> None:
                 shapes = _resolve_input_shapes(entry, case.raw)
                 sync_fn = _make_sync(backend, case.device)
 
-                for direction in ("forward", "backward"):
+                # The reduction-kernel workflow measures the forward kernels.
+                for direction in ("forward",):
                     requires_grad = direction == "backward"
 
                     inputs = [
@@ -151,6 +155,7 @@ def run_all(cfg: RunConfig) -> None:
                         warmup=cfg.warmup,
                         min_time_per_test=cfg.min_time_per_test,
                         num_runs=cfg.num_runs,
+                        fixed=cfg.iterations is not None,
                     )
 
                     median_us = statistics.median(times)

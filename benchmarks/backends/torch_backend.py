@@ -36,8 +36,10 @@ class TorchBackend(Backend):
         "sqrt": torch.sqrt,
         "tan": torch.tan,
         "sum": lambda x, dim: torch.sum(x, dim),
-        "min": lambda x, dim: torch.min(x, dim).values,
-        "max": lambda x, dim: torch.max(x, dim).values,
+        # Rushlite's reductions return values only. amin/amax are the matching
+        # PyTorch kernels; torch.min/max(dim) also compute arg indices.
+        "min": lambda x, dim: torch.amin(x, dim),
+        "max": lambda x, dim: torch.amax(x, dim),
         "prod": lambda x, dim: torch.prod(x, dim),
     }
 
