@@ -197,33 +197,26 @@ _UNARY_OPS = ["abs", "clamp", "cos", "exp", "log", "neg", "sin", "sqrt", "tan"]
 
 # --- Reduction ---
 
-# Keep this workflow reduction-only while iterating on the CUDA reduction
-# kernels. Each physical matrix shape is benchmarked along both axes.
-_reduction_shapes = [
-    [512, 4096],
-    [4096, 512],
-    [1024, 2048],
-    [512, 64],
-    [256, 128],
-]
+_reduction_long_cross = cross_product_configs(
+    R=[64, 256],
+    V=[32, 512],
+    dim=[0, 1],
+    device=_DEVICES,
+)
 
-_reduction_configs: list[list[dict]] = []
-for _rows, _columns in _reduction_shapes:
-    for _dim in (0, 1):
-        # The reduction harness represents dim 0 as shape [R, V] and dim 1 as
-        # shape [V, R], so swap the metadata to preserve the physical shape.
-        _R, _V = (
-            (_rows, _columns) if _dim == 0 else (_columns, _rows)
-        )
-        _reduction_configs.append(
-            [
-                {"R": _R},
-                {"V": _V},
-                {"dim": _dim},
-                {"device": "cuda"},
-                {"tags": "long"},
-            ]
-        )
+_reduction_long: list[list[dict]] = []
+for _combo in _reduction_long_cross:
+    _row = list(_combo) + [{"tags": "long"}]
+    _reduction_long.append(_row)
+
+# one shape for short: R=64, V=32, dim=0
+_reduction_short_cross = cross_product_configs(device=_DEVICES)
+_reduction_short: list[list[dict]] = []
+for _combo in _reduction_short_cross:
+    _row = [{"R": 64}, {"V": 32}, {"dim": 0}] + list(_combo) + [{"tags": "short"}]
+    _reduction_short.append(_row)
+
+_reduction_configs = _reduction_long + _reduction_short
 
 _REDUCTION_OPS = ["sum", "min", "max", "prod"]
 
@@ -231,8 +224,30 @@ _REDUCTION_OPS = ["sum", "min", "max", "prod"]
 def _build_catalog() -> list[OpEntry]:
     catalog: list[OpEntry] = []
 
-    # Binary and unary entries are intentionally omitted while this benchmark
-    # workflow is focused on the CUDA reduction kernels.
+    for op in _BINARY_OPS:
+        params = {"min": 0.25, "max": 0.75} if op == "clamp" else {}
+        catalog.append(
+            OpEntry(
+                name=op,
+                category="binary",
+                configs=_binary_configs,
+                input_recipe="randn",
+                params=params,
+            )
+        )
+
+    for op in _UNARY_OPS:
+        params = {"min": 0.25, "max": 0.75} if op == "clamp" else {}
+        catalog.append(
+            OpEntry(
+                name=op,
+                category="unary",
+                configs=_unary_configs,
+                input_recipe="rand",
+                params=params,
+            )
+        )
+
     for op in _REDUCTION_OPS:
         catalog.append(
             OpEntry(

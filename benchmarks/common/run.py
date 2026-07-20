@@ -64,12 +64,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Restrict to specific devices (e.g. cpu cuda). Default: all.",
     )
     p.add_argument(
-        "--op",
-        nargs="+",
-        default=None,
-        help="Restrict the run to specific operators (e.g. sum min).",
-    )
-    p.add_argument(
         "--warmup",
         type=int,
         default=100,
@@ -126,14 +120,12 @@ def _list_cases(args: argparse.Namespace) -> None:
 
     count = 0
     for entry in CATALOG:
-        if args.op and entry.name not in args.op:
-            continue
         for case in resolve_cases(entry):
             if not tag_ok(case.tag):
                 continue
             if args.device and case.device not in args.device:
                 continue
-            for direction in ("forward",):
+            for direction in ("forward", "backward"):
                 print(
                     f"{entry.name:6s}  {entry.category:9s}  {direction:8s}"
                     f"  {case.device:4s}  {case.dtype:7s}  {case.shape:20s}"
@@ -167,7 +159,6 @@ def main(argv: list[str] | None = None) -> None:
     cfg = RunConfig(
         tag=args.tag,
         devices=args.device,
-        ops=args.op,
         backends=args.backends,
         warmup=args.warmup,
         min_time_per_test=args.min_time_per_test,

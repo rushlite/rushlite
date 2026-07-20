@@ -33,15 +33,6 @@ target_link_libraries(playground
   PRIVATE autograd_core tensor_core nets_core
 )
 
-if(LMP_ENABLE_CUDA)
-  add_executable(reduct_benchmark reduct_benchmark.cpp)
-  target_link_libraries(reduct_benchmark PRIVATE tensor_core)
-  add_test(NAME reduct_benchmark_correctness
-           COMMAND reduct_benchmark --check-only)
-  set_tests_properties(reduct_benchmark_correctness
-                       PROPERTIES LABELS "library_tests")
-endif()
-
 if(LMP_ENABLE_COVERAGE)
   target_compile_options(tensor_tests PRIVATE --coverage -O0 -g)
   target_link_options(tensor_tests PRIVATE --coverage)
