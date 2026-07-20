@@ -135,9 +135,10 @@ KernelCache& kernel_cache() {
 void launch(CUfunction f, std::vector<void*>& args, size_t n) {
   const unsigned int block = 256;
   const unsigned int grid = static_cast<unsigned int>((n + block - 1) / block);
+  // Launches are asynchronous, matching eager kernel launches; callers that
+  // need completion (timing, host reads) must synchronize explicitly.
   CU_CHECK(cuLaunchKernel(f, grid, 1, 1, block, 1, 1, 0, nullptr, args.data(),
                           nullptr));
-  CU_CHECK(cuCtxSynchronize());
 }
 
 }
