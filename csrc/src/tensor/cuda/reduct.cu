@@ -2,9 +2,8 @@
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
 
-#include <cuda/std/array>
-
 #include <cstdint>
+#include <cuda/std/array>
 #include <type_traits>
 #include <utility>
 
@@ -34,9 +33,10 @@ __global__ void axis_zero_reduct_kernel(PtrList ptr_, OpFn fn_, size_t size,
 }
 
 template <typename PtrList, typename OpFn>
-__global__ void strided_warp_per_row_reduct_kernel(
-    PtrList ptr_, OpFn fn_, size_t size, size_t axis, const size_t* shape,
-    const stride_t* strides) {
+__global__ void strided_warp_per_row_reduct_kernel(PtrList ptr_, OpFn fn_,
+                                                   size_t size, size_t axis,
+                                                   const size_t* shape,
+                                                   const stride_t* strides) {
   constexpr size_t kWarpSize = 32;
   constexpr unsigned int kFullWarpMask = 0xffffffffU;
 
@@ -53,16 +53,15 @@ __global__ void strided_warp_per_row_reduct_kernel(
 
     auto increment = OpFn::kIdentity;
     for (size_t column = lane; column < shape[axis]; column += kWarpSize) {
-      increment = fn_(
-          increment,
-          ::cuda::std::get<1>(ptr_.fns)(ptr_.data[1],
-                                       row_start + (column * outer)));
+      increment =
+          fn_(increment, ::cuda::std::get<1>(ptr_.fns)(
+                             ptr_.data[1], row_start + (column * outer)));
     }
 
 #pragma unroll
     for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
-      increment = fn_(
-          increment, __shfl_down_sync(kFullWarpMask, increment, offset));
+      increment =
+          fn_(increment, __shfl_down_sync(kFullWarpMask, increment, offset));
     }
     if (lane == 0) {
       ptr_.set_Out(row, increment);
@@ -86,17 +85,15 @@ __global__ void last_axis_warp_reduct_kernel(PtrList ptr_, OpFn fn_,
   for (size_t row = first_row; row < row_count; row += warp_grid_stride) {
     const size_t row_start = row * reduction_size;
     auto increment = OpFn::kIdentity;
-    for (size_t column = lane; column < reduction_size;
-         column += kWarpSize) {
-      increment = fn_(
-          increment,
-          ::cuda::std::get<1>(ptr_.fns)(ptr_.data[1], row_start + column));
+    for (size_t column = lane; column < reduction_size; column += kWarpSize) {
+      increment = fn_(increment, ::cuda::std::get<1>(ptr_.fns)(
+                                     ptr_.data[1], row_start + column));
     }
 
 #pragma unroll
     for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
-      increment = fn_(
-          increment, __shfl_down_sync(kFullWarpMask, increment, offset));
+      increment =
+          fn_(increment, __shfl_down_sync(kFullWarpMask, increment, offset));
     }
     if (lane == 0) {
       ptr_.set_Out(row, increment);
@@ -105,9 +102,10 @@ __global__ void last_axis_warp_reduct_kernel(PtrList ptr_, OpFn fn_,
 }
 
 template <typename OpFn>
-__global__ void last_axis_vectorized_reduct_kernel(
-    float* output, const float* input, OpFn fn_, size_t row_count,
-    size_t reduction_size) {
+__global__ void last_axis_vectorized_reduct_kernel(float* output,
+                                                   const float* input, OpFn fn_,
+                                                   size_t row_count,
+                                                   size_t reduction_size) {
   constexpr size_t kWarpSize = 32;
   constexpr size_t kVectorWidth = 4;
   constexpr unsigned int kFullWarpMask = 0xffffffffU;
@@ -142,8 +140,8 @@ __global__ void last_axis_vectorized_reduct_kernel(
 
 #pragma unroll
     for (int offset = kWarpSize / 2; offset > 0; offset /= 2) {
-      increment = fn_(
-          increment, __shfl_down_sync(kFullWarpMask, increment, offset));
+      increment =
+          fn_(increment, __shfl_down_sync(kFullWarpMask, increment, offset));
     }
     if (lane == 0) {
       output[row] = increment;
@@ -152,23 +150,25 @@ __global__ void last_axis_vectorized_reduct_kernel(
 }
 
 template <typename PtrList, typename OpFn>
-void axis_zero_reduct_kernel_launcher(
-    PtrList ptr_, OpFn fn_, size_t size, size_t axis, const size_t* shape,
-    const stride_t* strides, size_t ndims) {
+void axis_zero_reduct_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                                      size_t axis, const size_t* shape,
+                                      const stride_t* strides, size_t ndims) {
   size_t threads = 256;
   size_t blocks = std::min((size + threads - 1) / threads, 1024UL);
   ListDevicePtr<stride_t> d_strides(strides, ndims);
   ListDevicePtr<size_t> d_shape(shape, ndims);
-  axis_zero_reduct_kernel<<<blocks, threads>>>(
-      ptr_, fn_, size, axis, d_shape.get(), d_strides.get());
+  axis_zero_reduct_kernel<<<blocks, threads>>>(ptr_, fn_, size, axis,
+                                               d_shape.get(), d_strides.get());
   LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
       << "axis_zero_reduct_kernel_launcher: kernel failed.";
 }
 
 template <typename PtrList, typename OpFn>
-void strided_warp_per_row_reduct_kernel_launcher(
-    PtrList ptr_, OpFn fn_, size_t size, size_t axis, const size_t* shape,
-    const stride_t* strides, size_t ndims) {
+void strided_warp_per_row_reduct_kernel_launcher(PtrList ptr_, OpFn fn_,
+                                                 size_t size, size_t axis,
+                                                 const size_t* shape,
+                                                 const stride_t* strides,
+                                                 size_t ndims) {
   constexpr size_t kThreads = 256;
   constexpr size_t kWarpsPerBlock = kThreads / 32;
   const size_t blocks =
@@ -189,15 +189,16 @@ void last_axis_warp_reduct_kernel_launcher(PtrList ptr_, OpFn fn_,
   constexpr size_t kWarpsPerBlock = kThreads / 32;
   const size_t blocks =
       std::min((row_count + kWarpsPerBlock - 1) / kWarpsPerBlock, 1024UL);
-  last_axis_warp_reduct_kernel<<<blocks, kThreads>>>(
-      ptr_, fn_, row_count, reduction_size);
+  last_axis_warp_reduct_kernel<<<blocks, kThreads>>>(ptr_, fn_, row_count,
+                                                     reduction_size);
   LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
       << "last_axis_warp_reduct_kernel_launcher: kernel failed.";
 }
 
 template <typename PtrList, typename OpFn>
-void last_axis_vectorized_reduct_kernel_launcher(
-    PtrList ptr_, OpFn fn_, size_t row_count, size_t reduction_size) {
+void last_axis_vectorized_reduct_kernel_launcher(PtrList ptr_, OpFn fn_,
+                                                 size_t row_count,
+                                                 size_t reduction_size) {
   constexpr size_t kThreads = 256;
   constexpr size_t kWarpsPerBlock = kThreads / 32;
   const size_t blocks =
