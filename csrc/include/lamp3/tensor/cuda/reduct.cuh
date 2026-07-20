@@ -13,23 +13,56 @@ namespace lmp::tensor::detail::cuda {
 
 /// @internal
 template <typename PtrList, typename OpFn>
-__global__ void vectorized_reduct_kernel(PtrList ptr_, OpFn fn_, size_t size,
-                                         size_t axis, const size_t* shape,
-                                         const stride_t* strides);
+__global__ void axis_zero_reduct_kernel(PtrList ptr_, OpFn fn_, size_t size,
+                                        size_t axis, const size_t* shape,
+                                        const stride_t* strides);
 
 template <typename PtrList, typename OpFn>
-void reduct_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size, size_t axis,
-                            const size_t* shape, const stride_t* strides,
-                            size_t ndims);
+__global__ void strided_warp_per_row_reduct_kernel(
+    PtrList ptr_, OpFn fn_, size_t size, size_t axis, const size_t* shape,
+    const stride_t* strides);
+
+template <typename PtrList, typename OpFn>
+__global__ void last_axis_warp_reduct_kernel(PtrList ptr_, OpFn fn_,
+                                             size_t row_count,
+                                             size_t reduction_size);
+
+template <typename OpFn>
+__global__ void last_axis_vectorized_reduct_kernel(
+    float* output, const float* input, OpFn fn_, size_t row_count,
+    size_t reduction_size);
+
+template <typename PtrList, typename OpFn>
+void axis_zero_reduct_kernel_launcher(
+    PtrList ptr_, OpFn fn_, size_t size, size_t axis, const size_t* shape,
+    const stride_t* strides, size_t ndims);
+
+template <typename PtrList, typename OpFn>
+void strided_warp_per_row_reduct_kernel_launcher(
+    PtrList ptr_, OpFn fn_, size_t size, size_t axis, const size_t* shape,
+    const stride_t* strides, size_t ndims);
+
+template <typename PtrList, typename OpFn>
+void last_axis_warp_reduct_kernel_launcher(PtrList ptr_, OpFn fn_,
+                                           size_t row_count,
+                                           size_t reduction_size);
+
+template <typename PtrList, typename OpFn>
+void last_axis_vectorized_reduct_kernel_launcher(
+    PtrList ptr_, OpFn fn_, size_t row_count, size_t reduction_size);
 
 template <template <typename> class OpFunctor, typename... Args>
 void reduct_dispatch_handler(ReductMetaHandler& meta, size_t axis,
                              Args&&... args);
 
-extern template void reduct_dispatch_handler<SumFunctor>(ReductMetaHandler&, size_t);
-extern template void reduct_dispatch_handler<MaxFunctor>(ReductMetaHandler&, size_t);
-extern template void reduct_dispatch_handler<MinFunctor>(ReductMetaHandler&, size_t);
-extern template void reduct_dispatch_handler<ProdFunctor>(ReductMetaHandler&, size_t);
+extern template void reduct_dispatch_handler<SumFunctor>(ReductMetaHandler&,
+                                                         size_t);
+extern template void reduct_dispatch_handler<MaxFunctor>(ReductMetaHandler&,
+                                                         size_t);
+extern template void reduct_dispatch_handler<MinFunctor>(ReductMetaHandler&,
+                                                         size_t);
+extern template void reduct_dispatch_handler<ProdFunctor>(ReductMetaHandler&,
+                                                          size_t);
 
 /// @endinternal
 
