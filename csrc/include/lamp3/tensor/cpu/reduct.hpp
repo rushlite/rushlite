@@ -9,23 +9,31 @@ namespace lmp::tensor::detail::cpu {
 
 /// @internal
 template <typename PtrList, typename OpFn>
-void vectorized_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i,
-                                         size_t axis, const size_t* shape,
-                                         const stride_t* strides);
+void contiguous_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                              size_t reduced_size, stride_t outer);
 
 template <typename PtrList, typename OpFn>
-void reduct_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size, size_t axis,
-                            const size_t* shape, const stride_t* strides,
-                            size_t ndims);
+void strided_reduct_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                           size_t reduced_size, stride_t reduced_stride,
+                           const CPUOffsetUtil<1>* offset);
+
+template <typename PtrList, typename OpFn>
+void reduct_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                            size_t reduced_size, stride_t reduced_stride,
+                            const CPUOffsetUtil<1>* offset);
 
 template <template <typename> class OpFunctor, typename... Args>
 void reduct_dispatch_handler(ReductMetaHandler& meta, size_t axis,
-                             Args&&... args); 
+                             Args&&... args);
 
-extern template void reduct_dispatch_handler<SumFunctor>(ReductMetaHandler&, size_t);
-extern template void reduct_dispatch_handler<MaxFunctor>(ReductMetaHandler&, size_t);
-extern template void reduct_dispatch_handler<MinFunctor>(ReductMetaHandler&, size_t);
-extern template void reduct_dispatch_handler<ProdFunctor>(ReductMetaHandler&, size_t);
+extern template void reduct_dispatch_handler<SumFunctor>(ReductMetaHandler&,
+                                                         size_t);
+extern template void reduct_dispatch_handler<MaxFunctor>(ReductMetaHandler&,
+                                                         size_t);
+extern template void reduct_dispatch_handler<MinFunctor>(ReductMetaHandler&,
+                                                         size_t);
+extern template void reduct_dispatch_handler<ProdFunctor>(ReductMetaHandler&,
+                                                          size_t);
 
 /// @endinternal
 

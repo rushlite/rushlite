@@ -5,16 +5,19 @@
 namespace lmp::tensor::detail::cpu {
 
 template <typename PtrList, typename OpFn>
-void vectorized_binary_kernel(PtrList ptr_, OpFn fn_, size_t i) {
-  ptr_.set_Out(i, fn_(::std::get<1>(ptr_.fns)(ptr_.data[1], i),
-                      ::std::get<2>(ptr_.fns)(ptr_.data[2], i)));
+void binary_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                   const CPUOffsetUtil<kNArgs>* offset) {
+  const offsets_t<kNArgs> offsets = offset->get(i);
+  ptr_.set_Out(i, fn_(::std::get<1>(ptr_.fns)(ptr_.data[1], offsets[0]),
+                      ::std::get<2>(ptr_.fns)(ptr_.data[2], offsets[1])));
 }
 
 template <typename PtrList, typename OpFn>
-void binary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size) {
-#pragma omp parallel for simd
+void binary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                            const CPUOffsetUtil<kNArgs>* offset) {
+#pragma omp parallel for
   for (size_t i = 0; i < size; i++) {
-    vectorized_binary_kernel(ptr_, fn_, i);
+    binary_kernel(ptr_, fn_, i, offset);
   }
 }
 
@@ -35,7 +38,8 @@ void binary_dispatch_handler(BinaryMetaHandler& meta, Args&&... args) {
                 static_cast<arg2_dtype_t*>(
                     const_cast<TensorImpl*>(meta.in()[1])->data())),
             OpFunctor<out_dtype_t>(std::forward<Args>(args)...),
-            meta.out().numel());
+            meta.out().numel(),
+            static_cast<const CPUOffsetUtil<kNArgs>*>(meta.offset()));
       });
     });
   });

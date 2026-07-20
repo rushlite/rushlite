@@ -16,10 +16,12 @@ constexpr size_t kNArgs = BinaryMetaHandler::kNumElem;
 
 /// @internal
 template <typename PtrList, typename OpFn>
-__global__ void vectorized_binary_kernel(PtrList ptr_, OpFn fn_, size_t size);
+__global__ void binary_kernel(PtrList ptr_, OpFn fn_, size_t size,
+                              OffsetCalculator<kNArgs> offset);
 
 template <typename PtrList, typename OpFn>
-void binary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size);
+void binary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                            OffsetCalculator<kNArgs> offset);
 
 template <template <typename> class OpFunctor, typename... Args>
 void binary_dispatch_handler(BinaryMetaHandler& meta, Args&&... args);

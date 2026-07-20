@@ -43,6 +43,7 @@ __global__ void addInplaceKernel(T* destination, const T* source,
 
 template <typename T>
 void addInplace(T* destination, const T* source, std::size_t size) {
+  if (size == 0) return;
   using V = vec4_t<T>;
   const bool vectorized = internal::is_aligned(destination, alignof(V)) &&
                           internal::is_aligned(source, alignof(V));
@@ -65,6 +66,7 @@ DataPtr empty_cuda(std::size_t byte_size) {
 }
 
 void fill_cuda(void* ptr, std::size_t size, Scalar t, DataType type) {
+  if (size == 0) return;
   LMP_DISPATCH_ALL_TYPES(type, [&]() {
     cudaVecFill(size, static_cast<scalar_t*>(ptr), static_cast<scalar_t>(t));
     LMP_CUDA_INTERNAL_ASSERT(cudaGetLastError())
@@ -74,6 +76,7 @@ void fill_cuda(void* ptr, std::size_t size, Scalar t, DataType type) {
 
 void add_inplace_cuda(void* destination, const void* source, std::size_t size,
                       DataType type) {
+  if (size == 0) return;
   LMP_DISPATCH_ALL_TYPES(type, [&]() {
     addInplace(static_cast<scalar_t*>(destination),
                static_cast<const scalar_t*>(source), size);
@@ -102,6 +105,7 @@ LMP_REGISTER_DISPATCH(ops::add_inplace_stub, DeviceType::CUDA,
 
 void vecCopyHostToDevice(const void* src, void* dest, std::size_t size,
                          DataType src_dtype, DataType dest_dtype) {
+  if (size == 0) return;
   LMP_DISPATCH_ALL_TYPES(src_dtype, [&] {
     using src_type = scalar_t;
     LMP_DISPATCH_ALL_TYPES(dest_dtype, [&] {
@@ -125,6 +129,7 @@ void vecCopyHostToDevice(const void* src, void* dest, std::size_t size,
 
 void copy_cuda(DeviceType to_device, const void* src, void* dest,
                std::size_t size, DataType src_dtype, DataType dest_dtype) {
+  if (size == 0) return;
   switch (to_device) {
     case DeviceType::CPU: {
       LMP_DISPATCH_ALL_TYPES(src_dtype, [&] {
@@ -183,6 +188,7 @@ __global__ void cudaVecCopyKernel(std::size_t size, const U* in, V* out) {
 
 template <typename U, typename V>
 void cudaVecCopy(std::size_t size, const U* in, V* out) {
+  if (size == 0) return;
   std::size_t threads = 256;
   std::size_t blocks = std::min((size + threads - 1) / threads, 1024UL);
   cudaVecCopyKernel<U, V><<<blocks, threads>>>(size, in, out);
@@ -198,6 +204,7 @@ __global__ void cudaVecFillKernel(std::size_t size, T* out, T value) {
 
 template <typename T>
 void cudaVecFill(std::size_t size, T* out, T value) {
+  if (size == 0) return;
   std::size_t threads = 256;
   std::size_t blocks = std::min((size + threads - 1) / threads, 1024UL);
   cudaVecFillKernel<T><<<blocks, threads>>>(size, out, value);

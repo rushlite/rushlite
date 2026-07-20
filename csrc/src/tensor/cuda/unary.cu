@@ -18,6 +18,17 @@ __global__ void vectorized_unary_kernel(PtrList ptr_, OpFn fn_, size_t size) {
   }
 }
 
+template <typename PtrList, typename OpFn>
+__global__ void strided_unary_kernel(PtrList ptr_, OpFn fn_, size_t size,
+                                     OffsetCalculator<1> offset) {
+  for (size_t i = (blockIdx.x * blockDim.x) + threadIdx.x; i < size;
+       i += gridDim.x * blockDim.x) {
+    const offsets_t<1> offsets = offset.get(i);
+    ptr_.set_Out(
+        i, fn_(::cuda::std::get<1>(ptr_.fns)(ptr_.data[1], offsets[0])));
+  }
+}
+
 // Fast path: contiguous, same-dtype input/output. Each thread processes a
 // width-4 packet, with a scalar tail for the (size % 4) remainder.
 template <typename T, typename OpFn>
@@ -37,6 +48,7 @@ __global__ void unary_kernel_vec(const T* in, T* out, OpFn fn_, size_t n_vec,
 
 template <typename PtrList, typename OpFn>
 void unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size) {
+  if (size == 0) return;
   size_t threads = 256;
   size_t blocks = std::min((size + threads - 1) / threads, 1024UL);
   vectorized_unary_kernel<<<blocks, threads>>>(ptr_, fn_, size);
@@ -44,8 +56,20 @@ void unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size) {
       << "unary_kernel_launcher: kernel failed.";
 }
 
+template <typename PtrList, typename OpFn>
+void strided_unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                                   OffsetCalculator<1> offset) {
+  if (size == 0) return;
+  size_t threads = 256;
+  size_t blocks = std::min((size + threads - 1) / threads, 1024UL);
+  strided_unary_kernel<<<blocks, threads>>>(ptr_, fn_, size, offset);
+  LMP_CUDA_INTERNAL_ASSERT(cudaDeviceSynchronize())
+      << "strided_unary_kernel_launcher: kernel failed.";
+}
+
 template <typename T, typename OpFn>
 void unary_kernel_vec_launcher(const T* in, T* out, OpFn fn_, size_t size) {
+  if (size == 0) return;
   size_t n_vec = size / internal::kVecWidth;
   unary_kernel_vec<T>
       <<<internal::elemwise_blocks(n_vec), internal::kElemwiseThreads>>>(
@@ -63,6 +87,15 @@ void unary_dispatch_handler(UnaryMetaHandler& meta, Args&&... args) {
       auto* out_ptr = static_cast<out_dtype_t*>(meta.out().data());
       auto* in_ptr = static_cast<arg_dtype_t*>(
           const_cast<TensorImpl*>(meta.in()[0])->data());
+      if (meta.has_offset()) {
+        strided_unary_kernel_launcher(
+            internal::CUDAPtrPack<out_dtype_t, arg_dtype_t>(out_ptr, in_ptr),
+            OpFunctor<out_dtype_t>(std::forward<Args>(args)...),
+            meta.out().numel(),
+            static_cast<const CUDAOffsetUtil<1>*>(meta.offset())
+                ->calculator());
+        return;
+      }
       if constexpr (std::is_same_v<out_dtype_t, arg_dtype_t>) {
         using V = vec4_t<out_dtype_t>;
         if (internal::is_aligned(out_ptr, alignof(V)) &&

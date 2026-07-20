@@ -7,6 +7,7 @@
 #include "lamp3/tensor/native/matrix_ops.hpp"
 #include "lamp3/tensor/native/overloads.hpp"
 #include "lamp3/tensor/native/reduct_ops.hpp"
+#include "lamp3/tensor/native/shape_ops.hpp"
 #include "lamp3/tensor/native/unary_ops.hpp"
 #include "lamp3/tensor/tensor.hpp"
 #include "lamp3/tensor/tensor_impl.hpp"
@@ -21,7 +22,6 @@
 
 #ifdef LMP_ENABLE_CUDA
 #include "lamp3/tensor/cuda/binary.cuh"
-#include "lamp3/tensor/cuda/expand.cuh"
 #include "lamp3/tensor/cuda/kernels.cuh"
 #include "lamp3/tensor/cuda/list_ptr.cuh"
 #include "lamp3/tensor/cuda/matrix.cuh"

@@ -1,9 +1,20 @@
 #include "lamp3/autograd/functions/matrix_ops.hpp"
 
 #include "lamp3/autograd/function.hpp"
+#include "lamp3/autograd/utils/grad_utils.hpp"
 #include "lamp3/autograd/variable.hpp"
 
 namespace lmp::autograd::ops {
+namespace {
+
+tensor::Tensor transpose_last_two(const tensor::Tensor& input) {
+  LMP_INTERNAL_ASSERT(input.shape().size() >= 2)
+      << "Matmul operands must have rank at least two";
+  const size_t rank = input.shape().size();
+  return input.transpose(rank - 2, rank - 1);
+}
+
+}  // namespace
 
 variable_list MatrixMultiplicationBackward::apply(
     const variable_list& gradOutputs) {
@@ -12,12 +23,18 @@ variable_list MatrixMultiplicationBackward::apply(
   Variable& self = (*saved_inputs)[0];
   Variable& other = (*saved_inputs)[1];
 
-  if (self.requires_grad())
+  if (self.requires_grad()) {
+    tensor::Tensor self_grad =
+        tensor::ops::matmul(grad.grad(), transpose_last_two(other.data()));
     self.incr_grad(
-        tensor::ops::matmul(grad.grad(), tensor::ops::transpose(other.data())));
-  if (other.requires_grad())
+        detail::sum_broadcast_axis(self_grad, self.data().shape()));
+  }
+  if (other.requires_grad()) {
+    tensor::Tensor other_grad =
+        tensor::ops::matmul(transpose_last_two(self.data()), grad.grad());
     other.incr_grad(
-        tensor::ops::matmul(tensor::ops::transpose(self.data()), grad.grad()));
+        detail::sum_broadcast_axis(other_grad, other.data().shape()));
+  }
 
   variable_list grad_inputs = {};
   return grad_inputs;

@@ -1,5 +1,7 @@
 #include "lamp3/inductor/nvrtc/fused_graph.hpp"
 
+#include "lamp3/common/assert.hpp"
+
 namespace lmp::inductor {
 namespace {
 
@@ -10,6 +12,8 @@ void visit(tensor::TensorImpl* n, FusedGraph& g) {
 
   if (!n->is_deferred() || !n->lazy_op()->is_fusible()) {
     tensor::lazy::realize(n);
+    LMP_INTERNAL_ASSERT(n->is_contiguous())
+        << "Generated fusion kernels require contiguous input leaves";
     if (!g.slot.count(n)) {
       g.slot[n] = g.inputs.size();
       g.inputs.push_back(n);

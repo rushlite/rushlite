@@ -15,8 +15,16 @@ void vectorized_unary_kernel(PtrList ptr_, OpFn fn_, size_t i);
 template <typename PtrList, typename OpFn>
 void unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size);
 
+template <typename PtrList, typename OpFn>
+void strided_unary_kernel(PtrList ptr_, OpFn fn_, size_t i,
+                          const CPUOffsetUtil<1>* offset);
+
+template <typename PtrList, typename OpFn>
+void strided_unary_kernel_launcher(PtrList ptr_, OpFn fn_, size_t size,
+                                   const CPUOffsetUtil<1>* offset);
+
 template <template <typename> class OpFunctor, typename... Args>
-void unary_dispatch_handler(UnaryMetaHandler& meta, Args&&... args); 
+void unary_dispatch_handler(UnaryMetaHandler& meta, Args&&... args);
 
 extern template void unary_dispatch_handler<NegFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<ExpFunctor>(UnaryMetaHandler&);
@@ -26,8 +34,8 @@ extern template void unary_dispatch_handler<AbsFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<SinFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<CosFunctor>(UnaryMetaHandler&);
 extern template void unary_dispatch_handler<TanFunctor>(UnaryMetaHandler&);
-extern template void unary_dispatch_handler<ClampFunctor>(UnaryMetaHandler&, Scalar&,
-                                                   Scalar&);
+extern template void unary_dispatch_handler<ClampFunctor>(
+    UnaryMetaHandler&, Scalar&, Scalar&);
 
 /// @endinternal
 

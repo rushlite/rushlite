@@ -66,7 +66,7 @@ class TensorImpl {
     DataType src_dtype = TypeMeta<T>::kValue;
     ops::copy_stub()(DeviceType::CPU, device, data.data(), data_.data(), numel_,
                      src_dtype, type_);
-    update_strides();
+    set_contiguous_strides();
   }
   /// @internal
   /// @note: this should not be used by the user.
@@ -80,6 +80,7 @@ class TensorImpl {
   const std::vector<size_t>& shape() const noexcept;
   const std::vector<detail::stride_t>& strides() const noexcept;
   size_t numel() const noexcept;
+  bool is_contiguous() const noexcept;
   bool is_deferred() const noexcept;
   const std::shared_ptr<lazy::LazyFunction>& lazy_op() const noexcept;
   void set_realized(Storage storage);
@@ -87,6 +88,8 @@ class TensorImpl {
   Storage storage() const noexcept;
 
   TensorImpl reshape(std::vector<size_t> new_shape);
+  TensorImpl transpose(size_t dim0, size_t dim1);
+  TensorImpl permute(const std::vector<size_t>& dims);
   TensorImpl squeeze(size_t dim);
   TensorImpl expand_dims(size_t dim);
   Scalar index(const std::vector<size_t>& idx);
@@ -98,13 +101,8 @@ class TensorImpl {
  private:
   friend class Tensor;
 
-  /**
-  * @brief a simple function to recalculate the strides 
-  *
-  * @note after each operation that involves changing the shape, update_strides_()
-  * MUST be called for the broadcasting to work correctly. 
-  */
-  void update_strides();
+  /// Set canonical row-major strides for a tensor known to be contiguous.
+  void set_contiguous_strides();
 
   DataType type_;
   Storage data_;
